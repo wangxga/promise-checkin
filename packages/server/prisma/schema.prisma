@@ -1,0 +1,100 @@
+// 如约打卡 Prisma schema
+// 数据模型唯一真相源
+// 字符集 utf8mb4，时区应用层按 Asia/Shanghai 处理
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+// ========== 用户表 ==========
+model User {
+  id           BigInt   @id @default(autoincrement()) @db.UnsignedBigInt
+  openid       String   @unique @db.VarChar(64) // 微信 openid
+  unionid      String?  @db.VarChar(64) // 微信 unionid（跨产品识别，可选）
+  nickname     String?  @db.VarChar(64)
+  avatarUrl    String?  @db.VarChar(512)
+  phone        String?  @db.VarChar(20) // 脱敏：138****1234
+  phoneRaw     String?  @db.VarChar(64) // 微信加密手机号原文
+  familyId     BigInt?  @db.UnsignedBigInt // P2 家庭功能预留
+  status       Int      @default(1) @db.TinyInt // 1正常 0禁用
+  lastLoginAt  DateTime?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  plans    Plan[]
+  checkins Checkin[]
+
+  @@map("users")
+  @@index([familyId])
+}
+
+// ========== 打卡计划表 ==========
+model Plan {
+  id             BigInt    @id @default(autoincrement()) @db.UnsignedBigInt
+  userId         BigInt    @db.UnsignedBigInt
+  familyId       BigInt?   @db.UnsignedBigInt // P2 家庭功能预留，MVP 始终 null
+  name           String    @db.VarChar(64)
+  type           String    @default("custom") @db.VarChar(20) // course/medicine/measure/fitness/learning/custom
+  color          String    @default("#007AFF") @db.VarChar(16)
+  totalCount     Int?      @db.UnsignedInt // 总次数；null = 无限次（如量血压）
+  initialDoneCount Int     @default(0) @db.UnsignedInt // 起始进度（虚拟计数）：App 前已完成次数
+  doneCount      Int       @default(0) @db.UnsignedInt // App 内实际完成次数（冗余字段，重算）
+  missedCount    Int       @default(0) @db.UnsignedInt // 缺席次数（冗余字段）
+  absenceConsumes Boolean  @default(false) // 缺席是否计入配额消耗
+  timeMode       String    @default("fixed") @db.VarChar(10) // fixed/flexible
+  scheduleConfig Json? // 固定排期配置 { rules: [{weekday,time} | {every,time}] }
+  overdueHandling String   @default("keep_pending") @db.VarChar(16) // keep_pending/auto_missed
+  overdueGraceHours Int    @default(24) @db.UnsignedInt // 宽限期（小时），仅 auto_missed 生效
+  recordValue    Boolean   @default(false) // 是否记录数值（量血压=1）
+  valueUnit      String?   @db.VarChar(16) // 数值单位 mmHg/ml/个
+  startDate      DateTime? @db.Date // 计划开始日期
+  endDate        DateTime? @db.Date // 计划结束日期（无限次可空）
+  status         String    @default("active") @db.VarChar(16) // active/archived/completed
+  remark         String?   @db.VarChar(255)
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  deletedAt      DateTime? // 软删除；null = 未删除
+
+  user     User      @relation(fields: [userId], references: [id])
+  checkins Checkin[]
+
+  @@map("plans")
+  @@index([userId, status])
+  @@index([userId, type])
+  @@index([familyId])
+}
+
+// ========== 打卡记录表 ==========
+model Checkin {
+  id                  BigInt   @id @default(autoincrement()) @db.UnsignedBigInt
+  planId              BigInt   @db.UnsignedBigInt
+  userId              BigInt   @db.UnsignedBigInt // 操作用户（冗余，便于权限校验）
+  memberId            BigInt?  @db.UnsignedBigInt // 被打卡成员（P2 预留）
+  scheduledDate       DateTime @db.Date // 计划应打卡日期（用户本地时区，不参与 UTC 换算）
+  scheduledTime       String?  @db.VarChar(8) // 计划应打卡时间 HH:mm（固定排期时有值）
+  status              String   @default("pending") @db.VarChar(16) // done/missed/pending
+  actualTime          DateTime? // 实际打卡时间（status=done 时填）
+  value               Decimal? @db.Decimal(10, 2) // 记录数值（如血压 120.00）
+  remark              String?  @db.VarChar(255) // 备注（请假原因/打卡说明）
+  source              String   @default("scheduled") @db.VarChar(16) // scheduled/retroactive
+  adjustmentType      String?  @db.VarChar(16) // reschedule/makeup/null
+  originalScheduledDate DateTime? @db.Date // 调整排期前的原定日期（追溯用）
+  originalScheduledTime String?  @db.VarChar(8) // 调整排期前的原定时间
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+  deletedAt           DateTime? // 软删除
+
+  plan Plan @relation(fields: [planId], references: [id])
+  user User @relation(fields: [userId], references: [id])
+
+  @@map("checkins")
+  @@unique([planId, scheduledDate, scheduledTime]) // 防重复打卡；flexible 模式 scheduledTime=null，多 NULL 不冲突
+  @@index([planId, scheduledDate])
+  @@index([userId, status])
+  @@index([status, scheduledDate]) // 逾期扫描用
+}

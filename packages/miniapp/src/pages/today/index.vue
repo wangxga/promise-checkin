@@ -1,0 +1,216 @@
+<script setup lang="ts">
+import { onShow } from '@dcloudio/uni-app'
+import { useCheckinStore } from '@/store/checkin'
+
+const checkinStore = useCheckinStore()
+const loading = computed(() => checkinStore.loading)
+
+onShow(() => {
+  checkinStore.fetchOverview()
+})
+
+/** 一键打卡（recordValue 计划先弹数值输入） */
+async function handleQuickDone(
+  planId: number,
+  scheduledDate: string,
+  scheduledTime: string | null,
+  recordValue?: boolean,
+  valueUnit?: string | null,
+) {
+  try {
+    let value: number | undefined
+    // recordValue 计划：先弹数值输入
+    if (recordValue) {
+      const res = await uni.showModal({
+        title: '记录数值',
+        editable: true,
+        placeholderText: `请输入数值${valueUnit ? `（${valueUnit}）` : ''}`,
+        confirmText: '打卡',
+      })
+      if (!res.confirm) return // 用户取消
+      const inputVal = parseFloat(res.content || '')
+      if (isNaN(inputVal)) {
+        uni.showToast({ title: '请输入有效数值', icon: 'none' })
+        return
+      }
+      value = inputVal
+    }
+    await checkinStore.quickDone(planId, scheduledDate, scheduledTime, value)
+    uni.showToast({ title: '已打卡', icon: 'success' })
+    if (uni.vibrateShort) uni.vibrateShort({ type: 'light' })
+  } catch (e) {
+    uni.showToast({ title: e instanceof Error ? e.message : '打卡失败', icon: 'none' })
+  }
+}
+
+/** 跳缺席列表 */
+function goMissed() {
+  uni.navigateTo({ url: '/pages/stats/missed' })
+}
+</script>
+
+<template>
+  <view class="page">
+    <!-- 今日待办 -->
+    <view class="section-label">
+      <text>今日待办</text>
+      <text class="count">{{ checkinStore.overview?.todayTodo ?? 0 }} 项待打</text>
+    </view>
+
+    <view v-if="loading && !checkinStore.overview" class="loading">
+      <wd-loading />
+    </view>
+
+    <template v-else>
+      <view v-if="checkinStore.overview?.todayTodoList.length" class="rows">
+        <view
+          v-for="item in checkinStore.overview.todayTodoList"
+          :key="item.checkinId"
+          class="row"
+          @click="handleQuickDone(item.planId, item.scheduledDate, item.scheduledTime, item.recordValue, item.valueUnit)"
+        >
+          <view class="dot" :style="{ background: item.planColor }" />
+          <view class="main">
+            <text class="name">{{ item.planName }}</text>
+            <text class="sub">
+              {{ item.scheduledTime || '今日' }} · 待打卡{{ item.recordValue ? `（记录${item.valueUnit || '数值'}）` : '' }}
+            </text>
+          </view>
+          <wd-button
+            type="success"
+            size="small"
+            plain
+            @click.stop="handleQuickDone(item.planId, item.scheduledDate, item.scheduledTime, item.recordValue, item.valueUnit)"
+          >
+            打卡
+          </wd-button>
+        </view>
+      </view>
+
+      <view v-else class="empty">
+        <view class="check-icon">✓</view>
+        <text class="empty-text">今天没有待打卡</text>
+      </view>
+
+      <!-- 已完成 -->
+      <view v-if="checkinStore.overview?.todayDoneList.length" class="section-label">
+        <text>已完成</text>
+        <text class="count">{{ checkinStore.overview.todayDone }} 项</text>
+      </view>
+      <view v-if="checkinStore.overview?.todayDoneList.length" class="rows">
+        <view
+          v-for="item in checkinStore.overview.todayDoneList"
+          :key="item.checkinId"
+          class="row done"
+        >
+          <view class="dot done-dot" />
+          <view class="main">
+            <text class="name">{{ item.planName }}</text>
+            <text class="sub">{{ item.scheduledTime || '' }} · 已完成</text>
+          </view>
+          <text class="tag-done">已完成</text>
+        </view>
+      </view>
+
+      <!-- 缺席入口 -->
+      <view v-if="(checkinStore.overview?.weekMissed ?? 0) > 0" class="missed-entry">
+        <wd-button type="text" block @click="goMissed">
+          查看 {{ checkinStore.overview?.weekMissed }} 条缺席记录
+        </wd-button>
+      </view>
+    </template>
+  </view>
+</template>
+
+<style scoped lang="scss">
+.page {
+  min-height: 100vh;
+  padding: 0 0 40rpx;
+}
+.section-label {
+  display: flex;
+  justify-content: space-between;
+  padding: 40rpx 32rpx 20rpx;
+  font-size: 26rpx;
+  color: #ababab;
+  font-weight: 500;
+}
+.count {
+  font-size: 24rpx;
+}
+.loading {
+  display: flex;
+  justify-content: center;
+  padding: 120rpx 0;
+}
+.rows {
+  padding: 0 32rpx;
+}
+.row {
+  display: flex;
+  align-items: center;
+  gap: 24rpx;
+  padding: 28rpx 32rpx;
+  background: #fff;
+  border-radius: 24rpx;
+  margin-bottom: 16rpx;
+}
+.row:active {
+  background: #f5f5f5;
+}
+.dot {
+  width: 14rpx;
+  height: 14rpx;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.done-dot {
+  background: #34c759;
+}
+.main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 6rpx;
+}
+.name {
+  font-size: 30rpx;
+  font-weight: 600;
+}
+.sub {
+  font-size: 24rpx;
+  color: #ababab;
+}
+.row.done {
+  opacity: 0.55;
+}
+.tag-done {
+  font-size: 24rpx;
+  color: #34c759;
+}
+.empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 120rpx 0;
+  color: #ababab;
+}
+.check-icon {
+  width: 80rpx;
+  height: 80rpx;
+  border-radius: 50%;
+  border: 4rpx solid #34c759;
+  color: #34c759;
+  font-size: 48rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 24rpx;
+}
+.empty-text {
+  font-size: 28rpx;
+}
+.missed-entry {
+  padding: 32rpx;
+}
+</style>

@@ -1,0 +1,8 @@
+**/node_modules
+**/dist
+**/.output
+**/.nuxt
+packages/miniapp/src/pages.json
+packages/miniapp/src/manifest.json
+packages/miniapp/**/uni_modules/**
+demo/

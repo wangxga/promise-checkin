@@ -1,0 +1,46 @@
+# 依赖
+node_modules/
+
+# 构建产物
+dist/
+.output/
+.nuxt/
+*.tsbuildinfo
+
+# uni-app 生成物（pages.json / manifest.json 由插件自动生成，勿提交）
+packages/miniapp/src/pages.json
+packages/miniapp/src/manifest.json
+packages/miniapp/dist/
+
+# 环境变量与密钥（含微信 AppID/Secret，绝不提交）
+.env
+.env.local
+.env.*.local
+packages/server/.env
+packages/miniapp/env/
+
+# 日志
+*.log
+logs/
+npm-debug.log*
+pnpm-debug.log*
+
+# 编辑器
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+
+# Prisma 本地 DB（如有）
+*.db
+*.db-journal
+
+# 微信开发者工具（含个人 AppID 等私有配置，绝不提交）
+**/project.config.json
+**/project.private.config.json
+**/miniprogram_npm/
+
+# 系统
+Thumbs.db
+

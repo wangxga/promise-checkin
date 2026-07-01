@@ -1,0 +1,28 @@
+packages:
+  - 'packages/*'
+
+# 构建脚本白名单（这些包需要在 install 后执行 postinstall 下载二进制/编译）
+onlyBuiltDependencies:
+  - '@parcel/watcher'
+  - '@prisma/client'
+  - '@prisma/engines'
+  - core-js
+  - core-js-pure
+  - esbuild
+  - prisma
+  - vue-demi
+
+# 这些包发布时间较新，排除"最低发布时长"检查
+minimumReleaseAgeExclude:
+  - '@uni-helper/uni-env@0.3.1'
+  - '@uni-helper/uni-manifest-types@0.4.1'
+  - '@uni-helper/uni-pages-types@0.4.6'
+  - '@uni-helper/vite-plugin-uni-manifest@0.4.1'
+  - '@uni-helper/vite-plugin-uni-pages@0.4.6'
+
+allowBuilds:
+  '@parcel/watcher': set this to true or false
+  core-js: set this to true or false
+  core-js-pure: set this to true or false
+  esbuild: set this to true or false
+  vue-demi: set this to true or false

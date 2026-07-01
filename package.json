@@ -1,0 +1,27 @@
+{
+  "name": "promise-checkin",
+  "version": "0.1.0",
+  "private": true,
+  "description": "如约打卡 — 通用按计划打卡 + 缺席追溯工具",
+  "packageManager": "pnpm@11.9.0",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "dev:server": "pnpm --filter @promise-checkin/server dev",
+    "dev:miniapp": "pnpm --filter @promise-checkin/miniapp dev",
+    "build": "pnpm -r --filter=./packages/* build",
+    "lint": "eslint . --ext .ts,.vue",
+    "format": "prettier --write \"**/*.{ts,vue,json,md}\"",
+    "prepare": "husky install"
+  },
+  "devDependencies": {
+    "@commitlint/cli": "^19.3.0",
+    "@commitlint/config-conventional": "^19.2.2",
+    "eslint": "^9.0.0",
+    "husky": "^9.0.11",
+    "lint-staged": "^15.2.7",
+    "prettier": "^3.3.2",
+    "typescript": "^5.5.0"
+  }
+}
