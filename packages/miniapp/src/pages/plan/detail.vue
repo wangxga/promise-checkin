@@ -1,6 +1,8 @@
 <script setup lang="ts">
+import { ref, computed, nextTick } from 'vue'
 import { onLoad, onShow } from '@dcloudio/uni-app'
 import { planApi } from '@/api/plan'
+import { usePlanStore } from '@/store/plan'
 import { statsApi, type PlanProgressData } from '@/api/stats'
 import { checkinApi, type CalendarResult } from '@/api/checkin'
 import { totalDone } from '@/utils/progress'
@@ -12,6 +14,7 @@ interface ValuePoint {
   value: number
 }
 
+const planStore = usePlanStore()
 const planId = ref(0)
 const plan = ref<Plan | null>(null)
 const progressData = ref<PlanProgressData | null>(null)
@@ -21,6 +24,7 @@ const valueUnit = ref<string | null>(null)
 const activeTab = ref<'progress' | 'calendar' | 'records'>('progress')
 const calMonth = ref(currentMonth())
 const loading = ref(true)
+const loadError = ref(false)
 
 onLoad((options) => {
   const id = Number(options?.id)
@@ -30,22 +34,26 @@ onLoad((options) => {
     return
   }
   planId.value = id
-  loadData()
+})
+
+// onShow 刷新（编辑返回后数据更新）
+onShow(() => {
+  if (planId.value) loadData()
 })
 
 async function loadData() {
   loading.value = true
+  loadError.value = false
   try {
     const [p, prog] = await Promise.all([planApi.get(planId.value), statsApi.progress(planId.value)])
     plan.value = p
     progressData.value = prog
     await loadCalendar()
-    // recordValue 计划拉数值趋势
     if (p.recordValue) {
       await loadValues()
     }
-  } catch (e) {
-    uni.showToast({ title: e instanceof Error ? e.message : '加载失败', icon: 'none' })
+  } catch {
+    loadError.value = true
   } finally {
     loading.value = false
   }
@@ -175,6 +183,88 @@ function goEdit() {
   uni.navigateTo({ url: `/pages/plan/edit?id=${planId.value}` })
 }
 
+/** 删除计划（二次确认后软删除，返回列表页） */
+function handleDelete() {
+  uni.showModal({
+    title: '删除计划',
+    content: `确定删除"${plan.value?.name}"吗？可在回收站恢复。`,
+    confirmColor: '#FF3B30',
+    success: async (res) => {
+      if (!res.confirm) return
+      try {
+        await planStore.deletePlan(planId.value)
+        uni.showToast({ title: '已删除', icon: 'success' })
+        setTimeout(() => uni.navigateBack(), 600)
+      } catch {
+        uni.showToast({ title: '删除失败', icon: 'none' })
+      }
+    },
+  })
+}
+
+/** 今日打卡（找到今天的 pending 记录，标记完成） */
+async function handleCheckinToday() {
+  const today = todayStr()
+  const todayPending = calendar.value?.days.find(
+    (c) => c.scheduledDate === today && c.status === 'pending',
+  )
+  if (!todayPending) {
+    uni.showToast({ title: '今天没有待打卡', icon: 'none' })
+    return
+  }
+  try {
+    let value: number | undefined
+    if (plan.value?.recordValue) {
+      const res = await uni.showModal({
+        title: '记录数值',
+        editable: true,
+        placeholderText: `请输入数值${plan.value.valueUnit ? `（${plan.value.valueUnit}）` : ''}`,
+        confirmText: '打卡',
+      })
+      if (!res.confirm) return
+      value = parseFloat(res.content || '')
+      if (isNaN(value)) {
+        uni.showToast({ title: '请输入有效数值', icon: 'none' })
+        return
+      }
+    }
+    await checkinApi.upsert(planId.value, {
+      scheduledDate: today,
+      scheduledTime: todayPending.scheduledTime,
+      status: 'done',
+      value,
+    })
+    uni.showToast({ title: '已打卡', icon: 'success' })
+    loadData()
+  } catch {
+    uni.showToast({ title: '打卡失败', icon: 'none' })
+  }
+}
+
+/** 补卡（缺席记录 → 转为已完成） */
+async function handleMakeup(checkinId: number, scheduledDate: string, scheduledTime: string | null) {
+  uni.showModal({
+    title: '补卡',
+    content: '确认补记为已完成？',
+    success: async (res) => {
+      if (!res.confirm) return
+      try {
+        await checkinApi.retroactive(planId.value, { scheduledDate, scheduledTime })
+        uni.showToast({ title: '已补卡', icon: 'success' })
+        loadData()
+      } catch {
+        uni.showToast({ title: '补卡失败', icon: 'none' })
+      }
+    },
+  })
+}
+
+/** 判断今天是否有待打卡（控制打卡按钮显隐） */
+const hasTodayPending = computed(() => {
+  const today = todayStr()
+  return calendar.value?.days.some((c) => c.scheduledDate === today && c.status === 'pending') ?? false
+})
+
 /** 类型标签 */
 function typeLabel(type: string): string {
   const map: Record<string, string> = {
@@ -200,8 +290,13 @@ const missedRecords = computed(
       <wd-loading />
     </view>
 
+    <view v-else-if="loadError" class="error-state">
+      <text class="error-text">加载失败</text>
+      <button class="retry-btn" @tap="loadData">重试</button>
+    </view>
+
     <template v-else-if="plan && progressData">
-      <!-- 摘要区 -->
+      <!-- 摘要区 + 操作按钮 -->
       <view class="summary">
         <view class="s-icon" :style="{ background: plan.color + '1a' }">
           <text :style="{ color: plan.color }">{{ typeLabel(plan.type)[0] }}</text>
@@ -210,6 +305,13 @@ const missedRecords = computed(
         <text class="s-meta">
           {{ typeLabel(plan.type) }}{{ plan.remark ? ` · ${plan.remark}` : '' }}
         </text>
+      </view>
+
+      <!-- 操作按钮区 -->
+      <view class="action-bar">
+        <button v-if="hasTodayPending" class="action-btn primary" @tap="handleCheckinToday">今日打卡</button>
+        <button class="action-btn ghost" @tap="goEdit">编辑</button>
+        <button class="action-btn danger" @tap="handleDelete">删除</button>
       </view>
 
       <!-- Tab -->
@@ -328,7 +430,9 @@ const missedRecords = computed(
               <text class="rec-remark">{{ r.remark || '无备注' }}</text>
             </view>
             <text v-if="r.adjustmentType === 'makeup'" class="rec-tag makeup">已补</text>
-            <text v-else class="rec-tag missed-tag">缺</text>
+            <template v-else>
+              <button class="makeup-btn" @tap="handleMakeup(r.id, r.scheduledDate, r.scheduledTime)">补卡</button>
+            </template>
           </view>
         </view>
         <view v-else class="empty-records">
@@ -375,6 +479,67 @@ const missedRecords = computed(
   color: #ababab;
   margin-top: 8rpx;
 }
+.action-bar {
+  display: flex;
+  gap: 16rpx;
+  padding: 0 32rpx 24rpx;
+}
+.action-btn {
+  flex: 1;
+  height: 72rpx;
+  line-height: 72rpx;
+  font-size: 28rpx;
+  border-radius: 16rpx;
+  border: none;
+  text-align: center;
+  margin: 0;
+}
+.action-btn::after { border: none; }
+.action-btn.primary {
+  background: #1a1a1a;
+  color: #fff;
+}
+.action-btn.ghost {
+  background: #f5f5f5;
+  color: #6b6b6b;
+}
+.action-btn.danger {
+  background: rgba(255, 59, 48, 0.08);
+  color: #ff3b30;
+}
+.error-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 24rpx;
+  padding: 200rpx 0;
+}
+.error-text {
+  font-size: 28rpx;
+  color: #ababab;
+}
+.retry-btn {
+  width: 200rpx;
+  height: 72rpx;
+  line-height: 72rpx;
+  background: #f5f5f5;
+  color: #1a1a1a;
+  font-size: 28rpx;
+  border-radius: 16rpx;
+  border: none;
+}
+.retry-btn::after { border: none; }
+.makeup-btn {
+  font-size: 24rpx;
+  padding: 8rpx 24rpx;
+  background: #1a1a1a;
+  color: #fff;
+  border-radius: 20rpx;
+  border: none;
+  line-height: 1.5;
+  margin: 0;
+}
+.makeup-btn::after { border: none; }
 .tabs {
   display: flex;
   margin: 0 32rpx;

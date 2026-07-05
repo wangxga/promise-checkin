@@ -1,3 +1,4 @@
+import { ref } from 'vue'
 /**
  * Checkin Store — 今日打卡数据
  * 缓存首页概览（今日待办/已完成），提供打卡操作

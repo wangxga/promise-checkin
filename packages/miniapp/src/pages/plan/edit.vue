@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { ref, computed, reactive } from 'vue'
 import { onLoad } from '@dcloudio/uni-app'
 import { usePlanStore } from '@/store/plan'
 import { planApi, type CreatePlanParams } from '@/api/plan'

@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { ref } from 'vue'
 import { useUserStore } from '@/store/user'
 
 const userStore = useUserStore()
@@ -16,9 +17,8 @@ async function handleLogin() {
     await userStore.login()
     uni.showToast({ title: '登录成功', icon: 'success' })
     setTimeout(() => uni.switchTab({ url: '/pages/today/index' }), 600)
-  } catch (e) {
-    const msg = e instanceof Error ? e.message : '登录失败'
-    uni.showToast({ title: msg, icon: 'none' })
+  } catch {
+    uni.showToast({ title: '登录失败，请重试', icon: 'none' })
   } finally {
     loading.value = false
   }
@@ -28,14 +28,14 @@ async function handleLogin() {
 <template>
   <view class="login-page">
     <view class="brand">
-      <view class="logo">✓</view>
+      <image class="logo" src="/static/app-logo.png" mode="aspectFit" />
       <text class="title">如约打卡</text>
-      <text class="subtitle">通用按计划打卡 + 缺席追溯</text>
+      <text class="subtitle">打卡记录，一目了然</text>
     </view>
     <view class="action">
-      <wd-button type="primary" size="large" block :loading="loading" @click="handleLogin">
-        微信一键登录
-      </wd-button>
+      <button class="login-btn" :loading="loading" :disabled="loading" @click="handleLogin">
+        {{ loading ? '登录中...' : '微信一键登录' }}
+      </button>
       <text class="agreement">登录即代表同意<text class="link" @click.stop="goPrivacy">《隐私政策》</text></text>
     </view>
   </view>
@@ -45,10 +45,12 @@ async function handleLogin() {
 .login-page {
   display: flex;
   flex-direction: column;
+  align-items: center;
   justify-content: space-between;
-  min-height: 100vh;
-  padding: 120rpx 48rpx 80rpx;
+  height: 100vh;
+  padding: 200rpx 48rpx calc(80rpx + env(safe-area-inset-bottom));
   background: #fafafa;
+  box-sizing: border-box;
 }
 .brand {
   display: flex;
@@ -60,13 +62,6 @@ async function handleLogin() {
   width: 120rpx;
   height: 120rpx;
   border-radius: 28rpx;
-  background: #1a1a1a;
-  color: #fff;
-  font-size: 64rpx;
-  font-weight: 700;
-  display: flex;
-  align-items: center;
-  justify-content: center;
 }
 .title {
   font-size: 44rpx;
@@ -81,6 +76,26 @@ async function handleLogin() {
   display: flex;
   flex-direction: column;
   gap: 24rpx;
+  align-items: stretch;
+  width: 100%;
+}
+.login-btn {
+  width: 100%;
+  height: 96rpx;
+  line-height: 96rpx;
+  background: #07c160;
+  color: #fff;
+  font-size: 32rpx;
+  font-weight: 500;
+  border-radius: 48rpx;
+  border: none;
+  text-align: center;
+}
+.login-btn::after {
+  border: none;
+}
+.login-btn[disabled] {
+  opacity: 0.6;
 }
 .agreement {
   font-size: 22rpx;

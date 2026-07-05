@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { ref } from 'vue'
 import { useUserStore } from '@/store/user'
 import { planApi } from '@/api/plan'
 import type { Plan } from '@promise-checkin/shared'
@@ -87,7 +88,7 @@ async function handleRestore(id: number) {
     </wd-popup>
 
     <view class="about">
-      <text class="about-text">如约打卡 v0.1.0 — 工程地基已就绪</text>
+      <text class="about-text">© 2026 如约打卡</text>
     </view>
   </view>
 </template>

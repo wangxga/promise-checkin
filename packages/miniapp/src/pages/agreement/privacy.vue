@@ -25,9 +25,8 @@
       <text class="p">我们不会将您的信息用于其他目的，也不会分享给第三方。</text>
 
       <text class="h2">三、信息存储与安全</text>
-      <text class="p">· 您的数据存储在加密的服务器上，通过 HTTPS 传输。</text>
-      <text class="p">· 我们采取合理的安全措施保护您的信息。</text>
-      <text class="p">· 手机号（如采集）会脱敏存储（中间四位打码）。</text>
+      <text class="p">· 您的数据存储在服务器上，通过 HTTPS 加密传输。</text>
+      <text class="p">· 我们采取合理的安全措施保护您的信息不被泄露。</text>
 
       <text class="h2">四、信息删除</text>
       <text class="p">· 您可以随时删除计划或打卡记录，删除后数据进入回收站。</text>
@@ -37,7 +36,7 @@
       <text class="p">本产品适合各年龄段用户使用，不涉及未成年人不宜的内容。</text>
 
       <text class="h2">六、联系我们</text>
-      <text class="p">如有隐私相关问题，请通过小程序内的反馈功能联系我们。</text>
+      <text class="p">如有隐私相关问题，请通过微信小程序平台的客服渠道联系我们。</text>
     </view>
   </view>
 </template>

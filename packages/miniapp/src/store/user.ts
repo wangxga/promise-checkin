@@ -1,3 +1,4 @@
+import { ref, computed } from 'vue'
 /**
  * User Store — 用户业务状态
  * - 登录/登出/获取用户信息
@@ -66,21 +67,35 @@ export const useUserStore = defineStore('user', () => {
   }
 
   /**
-   * 启动时恢复登录态
-   * - 有 token：拉一次用户信息验证有效性；失效则清空并跳登录
-   * - 无 token：跳登录页（冷启动直接进了 today 首页，需要主动引导）
+   * 检查登录态，未登录或 token 失效则跳登录页
+   * 在首页 onShow 里调用（onLaunch 太早，reLaunch 会被吞）
    */
-  function restoreToken() {
+  async function checkLogin() {
     const tokenStore = useTokenStore()
     if (!tokenStore.isLogin) {
       uni.reLaunch({ url: '/pages/login/index' })
-      return
+      return false
     }
-    fetchProfile().catch(() => {
+    try {
+      await fetchProfile()
+      return true
+    } catch {
       tokenStore.clear()
       profile.value = null
       uni.reLaunch({ url: '/pages/login/index' })
-    })
+      return false
+    }
+  }
+
+  /** 启动时静默验证 token（不跳转，失败只清空） */
+  function restoreToken() {
+    const tokenStore = useTokenStore()
+    if (tokenStore.isLogin) {
+      fetchProfile().catch(() => {
+        tokenStore.clear()
+        profile.value = null
+      })
+    }
   }
 
   /** 登出 */

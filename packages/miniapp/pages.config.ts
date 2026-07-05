@@ -36,9 +36,9 @@ export default {
     backgroundColor: '#FFFFFF',
     borderStyle: 'white',
     list: [
-      { pagePath: 'pages/today/index', text: '今日' },
-      { pagePath: 'pages/plan/index', text: '计划' },
-      { pagePath: 'pages/me/index', text: '我的' },
+      { pagePath: 'pages/today/index', text: '今日', iconPath: 'static/tabbar/today.png', selectedIconPath: 'static/tabbar/today-active.png' },
+      { pagePath: 'pages/plan/index', text: '计划', iconPath: 'static/tabbar/plan.png', selectedIconPath: 'static/tabbar/plan-active.png' },
+      { pagePath: 'pages/me/index', text: '我的', iconPath: 'static/tabbar/me.png', selectedIconPath: 'static/tabbar/me-active.png' },
     ],
   },
 }

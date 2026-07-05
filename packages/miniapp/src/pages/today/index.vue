@@ -1,11 +1,20 @@
 <script setup lang="ts">
+import { ref, computed } from 'vue'
 import { onShow } from '@dcloudio/uni-app'
 import { useCheckinStore } from '@/store/checkin'
+import { useUserStore } from '@/store/user'
 
 const checkinStore = useCheckinStore()
+const userStore = useUserStore()
 const loading = computed(() => checkinStore.loading)
+const authChecked = ref(false) // 登录验证完成前不渲染业务内容
 
-onShow(() => {
+onShow(async () => {
+  authChecked.value = false
+  // 先检查登录态，未登录跳 login（此时页面只显示空白，看不到任何业务内容）
+  const ok = await userStore.checkLogin()
+  if (!ok) return
+  authChecked.value = true
   checkinStore.fetchOverview()
 })
 
@@ -51,6 +60,10 @@ function goMissed() {
 
 <template>
   <view class="page">
+    <!-- 登录验证完成前显示空白，防止未登录用户看到业务内容 -->
+    <view v-if="!authChecked" class="auth-loading" />
+
+    <template v-else>
     <!-- 今日待办 -->
     <view class="section-label">
       <text>今日待办</text>
@@ -119,6 +132,7 @@ function goMissed() {
         </wd-button>
       </view>
     </template>
+    </template>
   </view>
 </template>
 
@@ -126,6 +140,15 @@ function goMissed() {
 .page {
   min-height: 100vh;
   padding: 0 0 40rpx;
+}
+.auth-loading {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: #fafafa;
+  z-index: 999;
 }
 .section-label {
   display: flex;

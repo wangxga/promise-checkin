@@ -47,7 +47,10 @@ function typeLabel(type: string): string {
   <view class="page">
     <view class="header">
       <text class="title">我的计划</text>
-      <view class="add-btn" @click="goCreate">+</view>
+      <view class="add-btn" @tap="goCreate">
+        <view class="plus-h" />
+        <view class="plus-v" />
+      </view>
     </view>
 
     <view v-if="planStore.loading && !planStore.plans.length" class="loading">
@@ -90,9 +93,12 @@ function typeLabel(type: string): string {
     </view>
 
     <view v-else class="empty">
-      <view class="empty-icon">+</view>
+      <view class="empty-icon">
+        <view class="plus-h" />
+        <view class="plus-v" />
+      </view>
       <text class="empty-text">还没有计划</text>
-      <wd-button type="primary" size="small" @click="goCreate">新建计划</wd-button>
+      <button class="create-btn" @tap="goCreate">新建计划</button>
     </view>
   </view>
 </template>
@@ -117,16 +123,32 @@ function typeLabel(type: string): string {
   height: 56rpx;
   border-radius: 50%;
   background: #1a1a1a;
-  color: #fff;
-  font-size: 40rpx;
-  font-weight: 300;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  line-height: 1;
+  position: relative;
+  flex-shrink: 0;
 }
 .add-btn:active {
   opacity: 0.7;
+}
+/* 十字图标（绝对居中，不依赖字体 baseline） */
+.plus-h {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 24rpx;
+  height: 4rpx;
+  background: #fff;
+  border-radius: 2rpx;
+  transform: translate(-50%, -50%);
+}
+.plus-v {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 4rpx;
+  height: 24rpx;
+  background: #fff;
+  border-radius: 2rpx;
+  transform: translate(-50%, -50%);
 }
 .loading {
   display: flex;
@@ -208,13 +230,24 @@ function typeLabel(type: string): string {
   height: 96rpx;
   border-radius: 50%;
   border: 4rpx dashed #d0d0d0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 56rpx;
-  color: #d0d0d0;
+  position: relative;
 }
 .empty-text {
   font-size: 28rpx;
+}
+.create-btn {
+  width: 240rpx;
+  height: 72rpx;
+  line-height: 72rpx;
+  background: #1a1a1a;
+  color: #fff;
+  font-size: 28rpx;
+  border-radius: 36rpx;
+  border: none;
+  text-align: center;
+  margin: 0;
+}
+.create-btn::after {
+  border: none;
 }
 </style>
