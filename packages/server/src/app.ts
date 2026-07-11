@@ -7,7 +7,6 @@ import { isDevAutoLogin } from './lib/devtool.js'
 import { setupScheduler } from './jobs/scheduler.js'
 import { errorHandler } from './middlewares/error.js'
 import { requestLogger } from './middlewares/logger.js'
-import { rateLimit } from './middlewares/rateLimit.js'
 import { jwtMiddleware } from './middlewares/jwt.js'
 import { rootRouter } from './routes/index.js'
 
@@ -39,9 +38,6 @@ app.use(
     jsonLimit: '1mb',
   }),
 )
-
-// 限流（Redis 滑窗，Redis 不可用时降级放行）
-app.use(rateLimit)
 
 // JWT 鉴权（白名单内部处理，不需要的话直接放行）
 app.use(jwtMiddleware(config.app.apiPrefix))

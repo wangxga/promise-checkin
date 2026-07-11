@@ -1,10 +1,4 @@
-import dotenv from 'dotenv'
-import path from 'node:path'
-
-// 两层加载：先读 .env 拿 NODE_ENV，再加载 .env.{NODE_ENV}
-dotenv.config({ path: path.resolve(process.cwd(), '.env') })
-const nodeEnv = process.env.NODE_ENV || 'development'
-dotenv.config({ path: path.resolve(process.cwd(), `.env.${nodeEnv}`) })
+import 'dotenv/config'
 
 /**
  * 应用配置
