@@ -12,12 +12,11 @@ packages/miniapp/src/pages.json
 packages/miniapp/src/manifest.json
 packages/miniapp/dist/
 
-# 环境变量与密钥（含微信 AppID/Secret，绝不提交）
+# 环境变量与密钥（所有 .env* 文件都含敏感信息，绝不提交）
 .env
-.env.local
-.env.*.local
-packages/server/.env
-packages/miniapp/env/
+.env.*
+packages/server/.env*
+packages/miniapp/env/.env.production
 
 # 日志
 *.log

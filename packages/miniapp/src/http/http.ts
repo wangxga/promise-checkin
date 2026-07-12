@@ -27,9 +27,14 @@ let isRedirecting = false
 function toLogin() {
   if (isRedirecting) return
   isRedirecting = true
+  // 兜底超时复位：即使 reLaunch 的 complete/fail 都没触发，3 秒后强制复位
+  setTimeout(() => (isRedirecting = false), 3000)
   const tokenStore = useTokenStore()
   tokenStore.clear()
-  uni.reLaunch({ url: '/pages/login/index', complete: () => (isRedirecting = false) })
+  uni.reLaunch({
+    url: '/pages/login/index',
+    complete: () => (isRedirecting = false),
+  })
 }
 
 export async function request<T = unknown>(options: RequestOptions): Promise<T> {

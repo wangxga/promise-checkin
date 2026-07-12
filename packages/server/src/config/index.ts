@@ -1,4 +1,10 @@
-import 'dotenv/config'
+import dotenv from 'dotenv'
+import path from 'node:path'
+
+// 两层加载：先读 .env 拿 NODE_ENV，再加载 .env.{NODE_ENV}
+dotenv.config({ path: path.resolve(process.cwd(), '.env') })
+const nodeEnv = process.env.NODE_ENV || 'development'
+dotenv.config({ path: path.resolve(process.cwd(), `.env.${nodeEnv}`) })
 
 /**
  * 应用配置
@@ -48,7 +54,12 @@ export const config = {
   },
 
   jwt: {
-    secret: required('JWT_SECRET', 'dev-secret-change-me-in-production-at-least-32-chars'),
+    // 生产环境必须设置 JWT_SECRET（无 fallback，缺失即崩）
+    // 开发环境用固定密钥兜底
+    secret:
+      nodeEnv === 'production'
+        ? required('JWT_SECRET')
+        : process.env.JWT_SECRET || 'dev-secret-change-me-in-production-at-least-32-chars',
     accessExpires: int('JWT_ACCESS_EXPIRES_SECONDS', 7 * 24 * 3600),
     refreshExpires: int('JWT_REFRESH_EXPIRES_SECONDS', 30 * 24 * 3600),
   },

@@ -182,10 +182,17 @@ export async function restorePlan(userId: number, planId: number): Promise<Plan>
   if (plan.deletedAt === null) {
     throw BusinessError.conflict('该计划未被删除')
   }
-  // 事务：恢复计划 + 恢复关联 checkins
+  // 事务：恢复计划 + 只恢复"因计划删除而被连带软删的"checkins
+  // 判断依据：checkin.deletedAt 在 plan.deletedAt 前后 1 秒内（删计划事务的连带删除）
+  const planDeletedAt = plan.deletedAt!
+  const windowStart = new Date(planDeletedAt.getTime() - 1000)
+  const windowEnd = new Date(planDeletedAt.getTime() + 1000)
   await prisma.$transaction([
     prisma.checkin.updateMany({
-      where: { planId: plan.id },
+      where: {
+        planId: plan.id,
+        deletedAt: { gte: windowStart, lte: windowEnd },
+      },
       data: { deletedAt: null },
     }),
     planRepository.restore(plan.id),

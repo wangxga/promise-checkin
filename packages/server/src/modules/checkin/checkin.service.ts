@@ -53,20 +53,28 @@ export async function upsertCheckin(userId: number, planId: number, dto: UpsertC
       return { checkin: updated, planId: plan.id, statusChanged: oldStatus !== dto.status }
     }
 
-    const created = await tx.checkin.create({
-      data: {
-        planId: plan.id,
-        userId: BigInt(userId),
-        scheduledDate,
-        scheduledTime,
-        status: dto.status,
-        actualTime: dto.status === 'done' ? new Date() : null,
-        value: dto.value ?? null,
-        remark: dto.remark ?? null,
-        source: 'scheduled',
-      },
-    })
-    return { checkin: created, planId: plan.id, statusChanged: true }
+    try {
+      const created = await tx.checkin.create({
+        data: {
+          planId: plan.id,
+          userId: BigInt(userId),
+          scheduledDate,
+          scheduledTime,
+          status: dto.status,
+          actualTime: dto.status === 'done' ? new Date() : null,
+          value: dto.value ?? null,
+          remark: dto.remark ?? null,
+          source: 'scheduled',
+        },
+      })
+      return { checkin: created, planId: plan.id, statusChanged: true }
+    } catch (err: unknown) {
+      // P2002 = 唯一约束冲突（并发时另一个请求已创建了该槽位），转成业务冲突
+      if (err && typeof err === 'object' && 'code' in err && err.code === 'P2002') {
+        throw BusinessError.conflict('该时段已有打卡记录')
+      }
+      throw err
+    }
   })
 
   // 状态变了才重算计数（避免无谓的 count 查询）
@@ -115,16 +123,23 @@ export async function adjustSchedule(userId: number, checkinId: number, dto: Res
     throw BusinessError.conflict('目标时间已有打卡记录')
   }
 
-  const updated = await checkinRepository.update(checkin.id, {
-    scheduledDate: newDate,
-    scheduledTime: newTime,
-    adjustmentType: 'reschedule',
-    // 首次调整才记录原值（避免二次调整覆盖原始）
-    ...(checkin.originalScheduledDate === null
-      ? { originalScheduledDate: checkin.scheduledDate, originalScheduledTime: checkin.scheduledTime }
+  try {
+    const updated = await checkinRepository.update(checkin.id, {
+      scheduledDate: newDate,
+      scheduledTime: newTime,
+      adjustmentType: 'reschedule',
+      // 首次调整才记录原值（避免二次调整覆盖原始）
+      ...(checkin.originalScheduledDate === null
+        ? { originalScheduledDate: checkin.scheduledDate, originalScheduledTime: checkin.scheduledTime }
       : {}),
-  })
-  return toCheckinDTO(updated)
+    })
+    return toCheckinDTO(updated)
+  } catch (err: unknown) {
+    if (err && typeof err === 'object' && 'code' in err && err.code === 'P2002') {
+      throw BusinessError.conflict('目标时间已有打卡记录')
+    }
+    throw err
+  }
 }
 
 /**

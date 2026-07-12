@@ -3,17 +3,19 @@ import { config } from '../config/index.js'
 
 /**
  * 全局 logger 单例
- * - dev 环境用 pino-pretty 做人类可读输出
- * - prod 输出 JSON 便于日志收集
+ * - dev：pino-pretty 彩色输出到控制台
+ * - prod：JSON 输出到控制台 + 日志文件（PM2 也会接管 stdout 重定向到文件）
  */
-export const logger = pino({
+const loggerOptions: pino.LoggerOptions = {
   level: config.log.level,
-  ...(config.isProd
-    ? {}
-    : {
-        transport: {
-          target: 'pino-pretty',
-          options: { colorize: true, translateTime: 'SYS:standard' },
-        },
-      }),
-})
+}
+
+if (!config.isProd) {
+  // 开发环境：彩色控制台输出
+  loggerOptions.transport = {
+    target: 'pino-pretty',
+    options: { colorize: true, translateTime: 'SYS:standard' },
+  }
+}
+
+export const logger = pino(loggerOptions)

@@ -10,7 +10,7 @@ export const upsertCheckinSchema = z.object({
   scheduledDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, '日期格式应为 YYYY-MM-DD'),
   scheduledTime: z.string().regex(/^\d{2}:\d{2}$/).nullable().optional(),
   status: z.enum(['done', 'missed', 'pending']),
-  value: z.number().nullable().optional(),
+  value: z.number().min(-99999999.99).max(99999999.99).nullable().optional(),
   remark: z.string().max(BUSINESS_DEFAULTS.REMARK_MAX_LENGTH).nullable().optional(),
 })
 export type UpsertCheckinDTO = z.infer<typeof upsertCheckinSchema>
@@ -18,7 +18,7 @@ export type UpsertCheckinDTO = z.infer<typeof upsertCheckinSchema>
 /** PATCH /checkins/:id — 改状态 */
 export const updateCheckinSchema = z.object({
   status: z.enum(['done', 'missed', 'pending']).optional(),
-  value: z.number().nullable().optional(),
+  value: z.number().min(-99999999.99).max(99999999.99).nullable().optional(),
   remark: z.string().max(BUSINESS_DEFAULTS.REMARK_MAX_LENGTH).nullable().optional(),
 })
 export type UpdateCheckinDTO = z.infer<typeof updateCheckinSchema>
@@ -34,7 +34,7 @@ export type RescheduleDTO = z.infer<typeof rescheduleSchema>
 export const retroactiveSchema = z.object({
   scheduledDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
   scheduledTime: z.string().regex(/^\d{2}:\d{2}$/).nullable().optional(),
-  value: z.number().nullable().optional(),
+  value: z.number().min(-99999999.99).max(99999999.99).nullable().optional(),
   remark: z.string().max(BUSINESS_DEFAULTS.REMARK_MAX_LENGTH).nullable().optional(),
 })
 export type RetroactiveDTO = z.infer<typeof retroactiveSchema>

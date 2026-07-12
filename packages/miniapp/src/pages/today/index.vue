@@ -8,6 +8,7 @@ const checkinStore = useCheckinStore()
 const userStore = useUserStore()
 const loading = computed(() => checkinStore.loading)
 const authChecked = ref(false) // 登录验证完成前不渲染业务内容
+const submittingId = ref(0) // 正在打卡的 checkinId，防重复点击
 
 onShow(async () => {
   authChecked.value = false
@@ -20,12 +21,15 @@ onShow(async () => {
 
 /** 一键打卡（recordValue 计划先弹数值输入） */
 async function handleQuickDone(
+  checkinId: number,
   planId: number,
   scheduledDate: string,
   scheduledTime: string | null,
   recordValue?: boolean,
   valueUnit?: string | null,
 ) {
+  if (submittingId.value) return // 防重复点击
+  submittingId.value = checkinId
   try {
     let value: number | undefined
     // recordValue 计划：先弹数值输入
@@ -47,8 +51,10 @@ async function handleQuickDone(
     await checkinStore.quickDone(planId, scheduledDate, scheduledTime, value)
     uni.showToast({ title: '已打卡', icon: 'success' })
     if (uni.vibrateShort) uni.vibrateShort({ type: 'light' })
-  } catch (e) {
-    uni.showToast({ title: e instanceof Error ? e.message : '打卡失败', icon: 'none' })
+  } catch {
+    uni.showToast({ title: '打卡失败', icon: 'none' })
+  } finally {
+    submittingId.value = 0
   }
 }
 
@@ -80,23 +86,22 @@ function goMissed() {
           v-for="item in checkinStore.overview.todayTodoList"
           :key="item.checkinId"
           class="row"
-          @click="handleQuickDone(item.planId, item.scheduledDate, item.scheduledTime, item.recordValue, item.valueUnit)"
+          @click="handleQuickDone(item.checkinId, item.planId, item.scheduledDate, item.scheduledTime, item.recordValue, item.valueUnit)"
         >
           <view class="dot" :style="{ background: item.planColor }" />
           <view class="main">
             <text class="name">{{ item.planName }}</text>
             <text class="sub">
-              {{ item.scheduledTime || '今日' }} · 待打卡{{ item.recordValue ? `（记录${item.valueUnit || '数值'}）` : '' }}
+              {{ item.scheduledTime || '待打卡' }}{{ item.recordValue ? `（记录${item.valueUnit || '数值'}）` : '' }}
             </text>
           </view>
-          <wd-button
-            type="success"
-            size="small"
-            plain
-            @click.stop="handleQuickDone(item.planId, item.scheduledDate, item.scheduledTime, item.recordValue, item.valueUnit)"
+          <button
+            class="checkin-btn"
+            :disabled="submittingId === item.checkinId"
+            @click.stop="handleQuickDone(item.checkinId, item.planId, item.scheduledDate, item.scheduledTime, item.recordValue, item.valueUnit)"
           >
-            打卡
-          </wd-button>
+            {{ submittingId === item.checkinId ? '...' : '打卡' }}
+          </button>
         </view>
       </view>
 
@@ -140,6 +145,24 @@ function goMissed() {
 .page {
   min-height: 100vh;
   padding: 0 0 40rpx;
+}
+.checkin-btn {
+  flex-shrink: 0;
+  height: 56rpx;
+  line-height: 56rpx;
+  padding: 0 28rpx;
+  font-size: 26rpx;
+  background: #34c759;
+  color: #fff;
+  border-radius: 28rpx;
+  border: none;
+  margin: 0;
+}
+.checkin-btn::after { border: none; }
+.checkin-btn[disabled] {
+  opacity: 0.5;
+  background: #34c759;
+  color: #fff;
 }
 .auth-loading {
   position: fixed;

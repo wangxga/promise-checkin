@@ -4,6 +4,7 @@ import { useUserStore } from '@/store/user'
 
 const userStore = useUserStore()
 const loading = ref(false)
+const agreed = ref(false)
 
 /** 跳隐私政策 */
 function goPrivacy() {
@@ -12,6 +13,10 @@ function goPrivacy() {
 
 async function handleLogin() {
   if (loading.value) return
+  if (!agreed.value) {
+    uni.showToast({ title: '请先阅读并同意隐私政策', icon: 'none' })
+    return
+  }
   loading.value = true
   try {
     await userStore.login()
@@ -36,7 +41,12 @@ async function handleLogin() {
       <button class="login-btn" :loading="loading" :disabled="loading" @click="handleLogin">
         {{ loading ? '登录中...' : '微信一键登录' }}
       </button>
-      <text class="agreement">登录即代表同意<text class="link" @click.stop="goPrivacy">《隐私政策》</text></text>
+      <view class="agree-row">
+        <view class="checkbox" :class="{ checked: agreed }" @click="agreed = !agreed">
+          <text v-if="agreed" class="check-mark">✓</text>
+        </view>
+        <text class="agreement" @click="agreed = !agreed">我已阅读并同意<text class="link" @click.stop="goPrivacy">《隐私政策》</text></text>
+      </view>
     </view>
   </view>
 </template>
@@ -97,10 +107,33 @@ async function handleLogin() {
 .login-btn[disabled] {
   opacity: 0.6;
 }
+.agree-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8rpx;
+}
+.checkbox {
+  width: 32rpx;
+  height: 32rpx;
+  border: 2rpx solid #c7c7cc;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.checkbox.checked {
+  background: #1a1a1a;
+  border-color: #1a1a1a;
+}
+.check-mark {
+  color: #fff;
+  font-size: 20rpx;
+}
 .agreement {
   font-size: 22rpx;
   color: #ababab;
-  text-align: center;
 }
 .link {
   color: #007aff;

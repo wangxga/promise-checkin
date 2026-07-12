@@ -132,10 +132,21 @@ async function submit() {
     step.value = 0
     return
   }
-  if (form.totalCountMode === 'limited' && form.initialDoneCount > form.totalCount) {
-    uni.showToast({ title: '起始进度不能超过总次数', icon: 'none' })
-    step.value = 1
-    return
+  // 处理 v-model.number 清空后变成空字符串的情况
+  if (form.totalCountMode === 'limited') {
+    if (!Number.isFinite(form.totalCount) || form.totalCount <= 0) {
+      uni.showToast({ title: '请填写有效的总次数', icon: 'none' })
+      step.value = 1
+      return
+    }
+    if (!Number.isFinite(form.initialDoneCount) || form.initialDoneCount < 0) {
+      form.initialDoneCount = 0
+    }
+    if (form.initialDoneCount > form.totalCount) {
+      uni.showToast({ title: '起始进度不能超过总次数', icon: 'none' })
+      step.value = 1
+      return
+    }
   }
   if (form.timeMode === 'fixed') {
     if (form.scheduleType === 'weekday' && !form.weekdays.length) {
@@ -318,7 +329,7 @@ function prev() {
         </view>
         <view v-if="form.scheduleType === 'weekday'" class="field">
           <text class="label">时间</text>
-          <view v-for="(t, i) in form.times" :key="i" class="time-row">
+          <view v-for="(t, i) in form.times" :key="t + '-' + i" class="time-row">
             <picker mode="time" :value="t" @change="form.times[i] = $event.detail.value">
               <view class="picker-val time">{{ t }}</view>
             </picker>
@@ -328,7 +339,7 @@ function prev() {
         </view>
         <view v-if="form.scheduleType === 'everyday'" class="field">
           <text class="label">每天几个时间点</text>
-          <view v-for="(t, i) in form.everydayTimes" :key="i" class="time-row">
+          <view v-for="(t, i) in form.everydayTimes" :key="t + '-' + i" class="time-row">
             <picker mode="time" :value="t" @change="form.everydayTimes[i] = $event.detail.value">
               <view class="picker-val time">{{ t }}</view>
             </picker>
