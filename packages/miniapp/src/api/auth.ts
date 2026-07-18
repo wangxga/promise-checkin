@@ -15,4 +15,8 @@ export const authApi = {
 
   /** 当前用户信息 */
   getMe: () => http.get<User>('/auth/me'),
+
+  /** 更新昵称和头像 */
+  updateProfile: (data: { nickname?: string; avatarUrl?: string }) =>
+    http.put<User>('/auth/profile', data),
 }

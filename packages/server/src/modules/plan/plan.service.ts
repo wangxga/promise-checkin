@@ -88,33 +88,21 @@ export async function createPlan(userId: number, dto: CreatePlanDTO): Promise<Pl
       },
     })
 
-    // 首次生成未来 14 天排期（fixed 模式）
+    // 首次生成未来 14 天排期（fixed 模式），新建计划无已存在记录，直接 create
     if (dto.timeMode === 'fixed' && dto.scheduleConfig) {
-      const endDate = new Date()
-      endDate.setDate(endDate.getDate() + 14)
+      const endDate = new Date(startDate.getTime() + 14 * 24 * 3600 * 1000)
       const slots = generateSlots(dto.scheduleConfig, startDate, endDate)
-      const exist = new Set(
-        (
-          await tx.checkin.findMany({
-            where: { planId: created.id },
-            select: { scheduledDate: true, scheduledTime: true },
-          })
-        ).map((c) => c.scheduledDate.toISOString().slice(0, 10) + '|' + (c.scheduledTime ?? '')),
-      )
       for (const slot of slots) {
-        const key = slot.scheduledDate.toISOString().slice(0, 10) + '|' + (slot.scheduledTime ?? '')
-        if (!exist.has(key)) {
-          await tx.checkin.create({
-            data: {
-              planId: created.id,
-              userId: BigInt(userId),
-              scheduledDate: slot.scheduledDate,
-              scheduledTime: slot.scheduledTime,
-              status: 'pending',
-              source: 'scheduled',
-            },
-          })
-        }
+        await tx.checkin.create({
+          data: {
+            planId: created.id,
+            userId: BigInt(userId),
+            scheduledDate: slot.scheduledDate,
+            scheduledTime: slot.scheduledTime,
+            status: 'pending',
+            source: 'scheduled',
+          },
+        })
       }
       logger.info({ planId: created.id, slots: slots.length }, '[plan] 首次生成排期')
     }

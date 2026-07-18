@@ -122,3 +122,18 @@ export async function getMe(userId: number): Promise<User> {
   }
   return toUserDTO(user)
 }
+
+/**
+ * 更新用户资料（昵称/头像）
+ */
+export async function updateProfile(
+  userId: number,
+  data: { nickname?: string; avatarUrl?: string },
+): Promise<User> {
+  const user = await authRepository.findById(BigInt(userId))
+  if (!user) {
+    throw BusinessError.notFound('用户不存在')
+  }
+  const updated = await authRepository.updateProfile(BigInt(userId), data)
+  return toUserDTO(updated)
+}

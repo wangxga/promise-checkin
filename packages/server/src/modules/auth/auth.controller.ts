@@ -1,5 +1,6 @@
 import Router from '@koa/router'
 import type { Context } from 'koa'
+import { z } from 'zod'
 import { loginSchema, refreshSchema } from './auth.dto.js'
 import * as authService from './auth.service.js'
 import { ok } from '../../shared-utils/response.js'
@@ -42,5 +43,22 @@ authRouter.post('/refresh', async (ctx: Context) => {
 authRouter.get('/me', async (ctx: Context) => {
   const userId = ctx.state.userId as number
   const user = await authService.getMe(userId)
+  ok(ctx, user)
+})
+
+/** PUT /auth/profile — 更新昵称和头像 */
+const updateProfileSchema = z.object({
+  nickname: z.string().min(1).max(64).optional(),
+  avatarUrl: z.string().max(512).optional(),
+})
+authRouter.put('/profile', async (ctx: Context) => {
+  const parsed = updateProfileSchema.safeParse(ctx.request.body)
+  if (!parsed.success) {
+    throw BusinessError.validation(
+      Object.fromEntries(parsed.error.issues.map((i) => [i.path.join('.'), i.message])),
+    )
+  }
+  const userId = ctx.state.userId as number
+  const user = await authService.updateProfile(userId, parsed.data)
   ok(ctx, user)
 })

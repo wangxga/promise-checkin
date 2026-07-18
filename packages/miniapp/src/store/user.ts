@@ -106,5 +106,5 @@ export const useUserStore = defineStore('user', () => {
     uni.reLaunch({ url: '/pages/login/index' })
   }
 
-  return { profile, isLogin, login, fetchProfile, restoreToken, logout }
+  return { profile, isLogin, login, fetchProfile, restoreToken, checkLogin, logout }
 })
