@@ -39,7 +39,7 @@ services:
     container_name: checkin-api
     restart: always
     ports:
-      - "3000:3000"
+      - "3001:3000"
     env_file:
       - .env.production
     environment:
