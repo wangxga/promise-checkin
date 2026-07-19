@@ -1,0 +1,51 @@
+services:
+  # ====== MySQL 8.0 ======
+  mysql:
+    image: mysql:8.0
+    container_name: checkin-mysql
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: wxg@2026_mysql     # ← 改：root 强密码
+      MYSQL_DATABASE: promise_checkin
+      MYSQL_USER: promise_checkin
+      MYSQL_PASSWORD: wxg@2026_mysql           # ← 改：业务账号密码（需与 api 的 DATABASE_URL 一致）
+    volumes:
+      - ./data/mysql:/var/lib/mysql
+    command: --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ====== Redis 7 ======
+  redis:
+    image: redis:latest
+    container_name: checkin-redis
+    restart: always
+    volumes:
+      - ./data/redis:/data
+    # ← 改：requirepass 与 healthcheck 里的密码必须一致
+    command: redis-server --appendonly yes --requirepass wxg@2026_redis
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "wxg@2026_redis", "--no-auth-warning", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ====== 后端 API ======
+  api:
+    image: checkin-backend:v1.0
+    container_name: checkin-api
+    restart: always
+    ports:
+      - "3000:3000"
+    env_file:
+      - .env.production
+    environment:
+      TZ: Asia/Shanghai
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
