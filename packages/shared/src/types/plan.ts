@@ -1,4 +1,4 @@
-import type { PlanType, TimeMode, PlanStatus, OverdueHandling } from '../enums/plan'
+import type { PlanType, TimeMode, PlanStatus, OverdueHandling } from '../enums/plan.js'
 
 /** 固定排期规则（按周几） */
 export interface WeekdayRule {

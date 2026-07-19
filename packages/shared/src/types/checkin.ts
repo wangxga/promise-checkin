@@ -1,4 +1,4 @@
-import type { CheckinStatus, CheckinSource, AdjustmentType } from '../enums/checkin'
+import type { CheckinStatus, CheckinSource, AdjustmentType } from '../enums/checkin.js'
 
 /**
  * 打卡记录实体（数据库形态）

@@ -1,4 +1,4 @@
-import type { ErrorCode } from '../constants/error-code'
+import type { ErrorCode } from '../constants/error-code.js'
 
 /**
  * 统一 API 响应格式

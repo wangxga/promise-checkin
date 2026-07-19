@@ -1,4 +1,4 @@
-import type { User } from './user'
+import type { User } from './user.js'
 
 /** POST /auth/login 请求体 */
 export interface LoginInput {
