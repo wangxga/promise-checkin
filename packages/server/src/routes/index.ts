@@ -10,6 +10,7 @@ import {
   checkinRouter,
 } from '../modules/checkin/checkin.controller.js'
 import { statsRouter, planProgressRouter } from '../modules/stats/stats.controller.js'
+import { uploadRouter } from '../modules/upload/upload.controller.js'
 
 /**
  * 路由聚合
@@ -43,5 +44,6 @@ apiRouter.use(authRouter.routes()).use(authRouter.allowedMethods())
 apiRouter.use(planRouter.routes()).use(planRouter.allowedMethods())
 apiRouter.use(checkinRouter.routes()).use(checkinRouter.allowedMethods())
 apiRouter.use(statsRouter.routes()).use(statsRouter.allowedMethods())
+apiRouter.use(uploadRouter.routes()).use(uploadRouter.allowedMethods())
 
 rootRouter.use(apiRouter.routes()).use(apiRouter.allowedMethods())

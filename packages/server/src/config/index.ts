@@ -81,6 +81,17 @@ export const config = {
      */
     autoLogin: process.env.NODE_ENV !== 'production' && process.env.DEV_AUTO_LOGIN !== 'false',
   },
+
+  upload: {
+    /** 文件存储根目录（绝对路径）。容器内 cwd=/app，默认 /app/uploads */
+    dir: path.resolve(process.cwd(), process.env.UPLOAD_DIR ?? 'uploads'),
+    /** 静态访问 URL 前缀。头像 URL 形如 {urlPrefix}/{userId}/{随机}.png */
+    urlPrefix: process.env.UPLOAD_URL_PREFIX ?? '/uploads',
+    /** 单文件大小上限（字节），默认 5MB */
+    maxFileSize: int('UPLOAD_MAX_SIZE', 5 * 1024 * 1024),
+    /** 允许的 MIME 类型（白名单）。放宽为 string[]，避免 as const 导致 multer 类型不兼容 */
+    allowedTypes: ['image/jpeg', 'image/png', 'image/webp'] as string[],
+  },
 } as const
 
 export type Config = typeof config

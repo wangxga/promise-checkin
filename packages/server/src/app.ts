@@ -1,6 +1,8 @@
 import Koa from 'koa'
 import bodyParser from 'koa-bodyparser'
 import cors from '@koa/cors'
+import mount from 'koa-mount'
+import serve from 'koa-static'
 import { config } from './config/index.js'
 import { logger } from './lib/logger.js'
 import { isDevAutoLogin } from './lib/devtool.js'
@@ -45,6 +47,10 @@ app.use(rateLimit)
 
 // JWT 鉴权（白名单内部处理，不需要的话直接放行）
 app.use(jwtMiddleware(config.app.apiPrefix))
+
+// 静态文件托管（头像等）——挂到 urlPrefix（默认 /uploads）下
+// 生产环境 NPM 反代到后端，静态也走这里；小程序 <image> 带不了鉴权 header，必须公开
+app.use(mount(config.upload.urlPrefix, serve(config.upload.dir, { maxage: 30 * 24 * 3600 * 1000 })))
 
 // 路由
 app.use(rootRouter.routes()).use(rootRouter.allowedMethods())

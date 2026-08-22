@@ -1,57 +1,100 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
 import { useUserStore } from '@/store/user'
 import { authApi } from '@/api/auth'
+import { uploadAvatar, resolveAssetUrl } from '@/api/upload'
 import { planApi } from '@/api/plan'
 import type { Plan } from '@promise-checkin/shared'
 
 const userStore = useUserStore()
 const trashPlans = ref<Plan[]>([])
 const showTrash = ref(false)
-const editingProfile = ref(false)
+const showNicknamePopup = ref(false)
 const editNickname = ref('')
+const savingNickname = ref(false)
+const avatarUploading = ref(false)
 
-/** 选择头像（从相册/拍照选图） */
-async function onChooseAvatar() {
+/** 是否已设置自定义头像（非默认头像） */
+const isCustomAvatar = computed(() => {
+  const url = userStore.profile?.avatarUrl
+  return !!url && !url.endsWith('default-avatar.png')
+})
+
+/** 头像展示 URL：DB 存相对路径（/uploads/...），拼上站点根才能被 <image> 加载 */
+const avatarSrc = computed(() => {
+  const url = userStore.profile?.avatarUrl
+  return url ? resolveAssetUrl(url) : ''
+})
+
+/**
+ * 选择头像：微信官方 chooseAvatar 组件回调
+ * 流程：拿临时路径 → 上传服务器拿真实 URL → 写回 DB
+ * 临时路径不能直接存（重启失效），必须上传
+ */
+async function onChooseAvatar(e: { detail: { avatarUrl: string } }) {
+  if (avatarUploading.value) return
+  const tempUrl = e.detail.avatarUrl
+  if (!tempUrl) return
+  avatarUploading.value = true
+  uni.showLoading({ title: '上传中...', mask: true })
   try {
-    const res = await uni.chooseMedia({
-      count: 1,
-      mediaType: ['image'],
-      sourceType: ['album', 'camera'],
-      sizeType: ['compressed'],
-    })
-    const tempUrl = res.tempFiles[0].tempFilePath
-    // 先更新 store 本地显示，再提交后端
+    // 1. 上传到服务器，拿持久化 URL
+    const serverUrl = await uploadAvatar(tempUrl)
+    // 2. 写回用户表
+    await authApi.updateProfile({ avatarUrl: serverUrl })
+    // 3. 乐观更新 store
     if (userStore.profile) {
-      userStore.profile.avatarUrl = tempUrl
+      userStore.profile.avatarUrl = serverUrl
     }
-    await authApi.updateProfile({ avatarUrl: tempUrl })
+    uni.hideLoading()
     uni.showToast({ title: '头像已更新', icon: 'success' })
-  } catch {
-    // 用户取消不提示
+  } catch (err) {
+    uni.hideLoading()
+    uni.showToast({
+      title: err instanceof Error ? err.message : '头像更新失败',
+      icon: 'none',
+    })
+  } finally {
+    avatarUploading.value = false
   }
 }
 
-/** 昵称输入完成 */
-async function onNicknameConfirm(e: { detail: { value: string } }) {
-  const nickname = e.detail.value.trim()
-  if (!nickname) return
+/** 打开昵称编辑弹窗 */
+function openNicknamePopup() {
+  editNickname.value = userStore.profile?.nickname || ''
+  showNicknamePopup.value = true
+}
+
+/** 保存昵称（由弹窗的"保存"按钮触发） */
+async function saveNickname() {
+  const nickname = editNickname.value.trim()
+  if (!nickname) {
+    uni.showToast({ title: '昵称不能为空', icon: 'none' })
+    return
+  }
+  if (savingNickname.value) return
+  savingNickname.value = true
+  // 保存前先收起键盘，避免微信昵称推荐条残留遮挡底部菜单
+  uni.hideKeyboard()
   try {
     await authApi.updateProfile({ nickname })
     if (userStore.profile) {
       userStore.profile.nickname = nickname
     }
-    editingProfile.value = false
+    showNicknamePopup.value = false
     uni.showToast({ title: '昵称已更新', icon: 'success' })
   } catch {
     uni.showToast({ title: '更新失败', icon: 'none' })
+  } finally {
+    savingNickname.value = false
   }
 }
 
-/** 开启昵称编辑 */
-function startEditNickname() {
-  editNickname.value = userStore.profile?.nickname || ''
-  editingProfile.value = true
+/** 取消编辑昵称（也收起键盘） */
+function cancelNickname() {
+  uni.hideKeyboard()
+  showNicknamePopup.value = false
+  editNickname.value = ''
 }
 
 function handleLogout() {
@@ -89,32 +132,34 @@ async function handleRestore(id: number) {
 <template>
   <view class="page">
     <view class="profile-card">
-      <view class="avatar-btn" @tap="onChooseAvatar">
-        <image
-          v-if="userStore.profile?.avatarUrl"
-          class="avatar"
-          :src="userStore.profile.avatarUrl"
-          mode="aspectFill"
-        />
-        <view v-else class="avatar-default">
-          <text class="avatar-placeholder">👤</text>
-        </view>
-        <view class="avatar-edit-hint">换</view>
+      <view class="avatar-col">
+        <!-- 微信官方头像组件：open-type="chooseAvatar" 弹微信原生选图弹窗 -->
+        <button
+          class="avatar-btn"
+          open-type="chooseAvatar"
+          :disabled="avatarUploading"
+          @chooseavatar="onChooseAvatar"
+        >
+          <image
+            v-if="userStore.profile?.avatarUrl"
+            class="avatar"
+            :src="avatarSrc"
+            mode="aspectFill"
+          />
+          <view v-else class="avatar-default">
+            <text class="avatar-placeholder">👤</text>
+          </view>
+          <!-- 自定义头像才显示"换"角标 -->
+          <view v-if="isCustomAvatar" class="avatar-edit-hint">换</view>
+        </button>
+        <!-- 默认头像时引导用户去设置 -->
+        <text v-if="!isCustomAvatar" class="avatar-tip">点头像设置</text>
       </view>
       <view class="info">
-        <view v-if="!editingProfile" class="nickname-row" @click="startEditNickname">
-          <text class="nickname">{{ userStore.profile?.nickname || '点击设置昵称' }}</text>
+        <view class="nickname-row" @click="openNicknamePopup">
+          <text class="nickname">{{ userStore.profile?.nickname || '未设置昵称' }}</text>
           <text class="edit-icon">✎</text>
         </view>
-        <input
-          v-else
-          class="nickname-input"
-          type="nickname"
-          :value="editNickname"
-          placeholder="输入昵称"
-          @blur="onNicknameConfirm"
-          @confirm="onNicknameConfirm"
-        />
       </view>
     </view>
 
@@ -151,6 +196,29 @@ async function handleRestore(id: number) {
       </view>
     </wd-popup>
 
+    <!-- 昵称编辑弹窗 -->
+    <wd-popup v-model="showNicknamePopup" position="bottom" :safe-area-inset-bottom="true" custom-style="border-radius: 24rpx 24rpx 0 0">
+      <view class="nickname-panel">
+        <view class="nickname-head">
+          <text class="nickname-cancel" @click="cancelNickname">取消</text>
+          <text class="nickname-title">设置昵称</text>
+          <text class="nickname-save" :class="{ disabled: savingNickname }" @click="saveNickname">保存</text>
+        </view>
+        <view class="nickname-input-wrap">
+          <input
+            class="nickname-input"
+            type="nickname"
+            :value="editNickname"
+            placeholder="请输入昵称"
+            :maxlength="20"
+            :focus="showNicknamePopup"
+            @input="editNickname = ($event as UniInputEvent).detail.value"
+          />
+        </view>
+        <text class="nickname-hint">输入昵称后点击「保存」，键盘会推荐你的微信昵称</text>
+      </view>
+    </wd-popup>
+
     <view class="about">
       <text class="about-text">© 2026 如约打卡</text>
     </view>
@@ -171,6 +239,13 @@ async function handleRestore(id: number) {
   border-radius: 24rpx;
   margin-bottom: 32rpx;
 }
+.avatar-col {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8rpx;
+  flex-shrink: 0;
+}
 .avatar-btn {
   position: relative;
   width: 120rpx;
@@ -180,7 +255,6 @@ async function handleRestore(id: number) {
   border: none;
   background: transparent;
   line-height: normal;
-  flex-shrink: 0;
 }
 .avatar-btn::after { border: none; }
 .avatar {
@@ -215,6 +289,10 @@ async function handleRestore(id: number) {
   align-items: center;
   justify-content: center;
 }
+.avatar-tip {
+  font-size: 20rpx;
+  color: #ababab;
+}
 .nickname-row {
   display: flex;
   align-items: center;
@@ -224,13 +302,6 @@ async function handleRestore(id: number) {
   font-size: 24rpx;
   color: #ababab;
 }
-.nickname-input {
-  font-size: 36rpx;
-  font-weight: 600;
-  border-bottom: 2rpx solid #1a1a1a;
-  padding-bottom: 4rpx;
-  width: 300rpx;
-}
 .info {
   display: flex;
   flex-direction: column;
@@ -239,10 +310,6 @@ async function handleRestore(id: number) {
 .nickname {
   font-size: 36rpx;
   font-weight: 600;
-}
-.uid {
-  font-size: 24rpx;
-  color: #ababab;
 }
 .section {
   background: #fff;
@@ -323,5 +390,47 @@ async function handleRestore(id: number) {
   padding: 80rpx 0;
   color: #ababab;
   font-size: 28rpx;
+}
+.nickname-panel {
+  padding: 32rpx;
+}
+.nickname-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 32rpx;
+}
+.nickname-cancel {
+  font-size: 28rpx;
+  color: #ababab;
+  padding: 8rpx 16rpx;
+}
+.nickname-title {
+  font-size: 34rpx;
+  font-weight: 600;
+}
+.nickname-save {
+  font-size: 28rpx;
+  color: #1a1a1a;
+  font-weight: 600;
+  padding: 8rpx 16rpx;
+}
+.nickname-save.disabled {
+  color: #c0c0c0;
+}
+.nickname-input-wrap {
+  background: #f5f5f5;
+  border-radius: 16rpx;
+  padding: 24rpx;
+  margin-bottom: 16rpx;
+}
+.nickname-input {
+  font-size: 32rpx;
+  width: 100%;
+}
+.nickname-hint {
+  font-size: 22rpx;
+  color: #ababab;
+  line-height: 1.6;
 }
 </style>
