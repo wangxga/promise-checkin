@@ -1,12 +1,12 @@
 import { prisma } from '../lib/prisma.js'
 import { logger } from '../lib/logger.js'
-import { syncPlanCounts } from '../modules/plan/plan.service.js'
-import { now, shanghaiDeadline, shanghaiDateStr } from '../shared-utils/timezone.js'
+import { markPlanOverdueMissed, syncPlanCounts } from '../modules/plan/plan.service.js'
 
 /**
  * 逾期扫描任务
- * 扫描 status=pending 且超过宽限期的记录
- * 按 plan.overdueHandling：auto_missed 则转 missed，keep_pending 不动
+ * 每小时扫描 auto_missed 计划下超过宽限期的 pending 记录并转 missed。
+ * keep_pending 计划不动（保持待补录，语义见计划编辑页「逾期处理」）。
+ * 转换口径与 ensurePlanSchedule 共用 markPlanOverdueMissed，保证一致。
  */
 export async function runOverdueScanner(): Promise<void> {
   // 查所有 auto_missed 计划下的 pending 记录
@@ -21,30 +21,10 @@ export async function runOverdueScanner(): Promise<void> {
   const affectedPlans = new Set<bigint>()
 
   for (const plan of autoMissedPlans) {
-    const records = await prisma.checkin.findMany({
-      where: {
-        planId: plan.id,
-        status: 'pending',
-        deletedAt: null,
-      },
-    })
-
-    for (const record of records) {
-      // 截止时间 = 上海时区的 scheduledDate + scheduledTime + graceHours
-      const dateStr = shanghaiDateStr(record.scheduledDate)
-      const deadline = shanghaiDeadline(dateStr, record.scheduledTime, plan.overdueGraceHours)
-
-      if (now() > deadline) {
-        await prisma.checkin.update({
-          where: { id: record.id },
-          data: {
-            status: 'missed',
-            remark: record.remark ?? '逾期未打卡（自动标记）',
-          },
-        })
-        totalConverted++
-        affectedPlans.add(plan.id)
-      }
+    const converted = await markPlanOverdueMissed(prisma, plan)
+    if (converted > 0) {
+      totalConverted += converted
+      affectedPlans.add(plan.id)
     }
   }
 

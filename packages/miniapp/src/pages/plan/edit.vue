@@ -26,7 +26,7 @@ const form = reactive({
   weekdays: [2, 6] as number[],
   times: ['18:00'],
   everydayTimes: ['08:00'],
-  overdueHandling: 'keep_pending' as 'keep_pending' | 'auto_missed',
+  overdueHandling: 'auto_missed' as 'keep_pending' | 'auto_missed',
   overdueGraceHours: 24,
   recordValue: false,
   valueUnit: '',

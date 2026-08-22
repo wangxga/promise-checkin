@@ -31,7 +31,7 @@ export const createPlanSchema = z.object({
   absenceConsumes: z.boolean().default(false),
   timeMode: z.enum(['fixed', 'flexible']),
   scheduleConfig: scheduleConfig.nullable().optional(),
-  overdueHandling: z.enum(['keep_pending', 'auto_missed']).default('keep_pending'),
+  overdueHandling: z.enum(['keep_pending', 'auto_missed']).default('auto_missed'),
   overdueGraceHours: z.number().int().positive().default(24),
   recordValue: z.boolean().default(false),
   valueUnit: z.string().max(16).nullable().optional(),
