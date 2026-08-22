@@ -44,6 +44,9 @@ services:
       - .env.production
     environment:
       TZ: Asia/Shanghai
+    volumes:
+      # 用户上传的文件持久化到宿主机（容器重建不丢）
+      - ./data/files:/app/uploads
     depends_on:
       mysql:
         condition: service_healthy

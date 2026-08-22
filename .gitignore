@@ -13,6 +13,10 @@ packages/miniapp/src/pages.json
 packages/miniapp/src/manifest.json
 packages/miniapp/dist/
 
+# 用户上传文件（运行时产物，不提交；default-avatar.png 是随镜像分发的种子文件，保留）
+packages/server/uploads/*
+!packages/server/uploads/default-avatar.png
+
 # 环境变量与密钥（所有 .env* 文件都含敏感信息，绝不提交）
 .env
 .env.*

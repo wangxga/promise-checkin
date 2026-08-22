@@ -50,7 +50,13 @@ COPY --from=builder /build/node_modules/ ../node_modules/
 COPY --from=builder /build/packages/server/node_modules/ ./node_modules/
 COPY --from=builder /build/packages/shared/node_modules/ ../shared/node_modules/
 
+# 默认头像图（作为种子文件，启动时拷到 /app/uploads，供新用户使用）
+COPY --from=builder /build/packages/server/uploads/ /app/seed-uploads/
+
 EXPOSE 3000
 
-# 启动：先执行数据库迁移（自动建表/更新表结构），再启动服务
-CMD ["sh", "-c", "npx prisma migrate deploy && node dist/app.js"]
+# 启动流程：
+# 1. 把种子文件（默认头像）拷到 /app/uploads（不覆盖已存在文件，避免覆盖用户上传的）
+# 2. 执行数据库迁移（自动建表/更新表结构）
+# 3. 启动服务
+CMD ["sh", "-c", "mkdir -p /app/uploads && cp -n /app/seed-uploads/* /app/uploads/ 2>/dev/null; npx prisma migrate deploy && node dist/app.js"]
