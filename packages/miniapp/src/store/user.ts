@@ -82,6 +82,8 @@ export const useUserStore = defineStore('user', () => {
   async function checkLogin() {
     const tokenStore = useTokenStore()
     if (!tokenStore.isLogin) {
+      // 用户主动退出过：不自动静默登录，进游客态（再次登录由用户主动选择）
+      if (tokenStore.manualLogout) return false
       return await silentLogin()
     }
     try {
@@ -114,11 +116,13 @@ export const useUserStore = defineStore('user', () => {
   }
 
   /** 登出 */
+  /** 登出：清 token 并标记主动退出（抑制下次启动的静默自动登录），
+   *  回首页游客态——不再跳登录页，与「登录由用户自行选择」一致 */
   function logout() {
     const tokenStore = useTokenStore()
-    tokenStore.clear()
+    tokenStore.markManualLogout()
     profile.value = null
-    uni.reLaunch({ url: '/pages/login/index' })
+    uni.reLaunch({ url: '/pages/today/index' })
   }
 
   return { profile, isLogin, login, silentLogin, fetchProfile, restoreToken, checkLogin, logout }
