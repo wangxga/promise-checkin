@@ -2,11 +2,13 @@
 import { ref, computed, reactive } from 'vue'
 import { onLoad } from '@dcloudio/uni-app'
 import { usePlanStore } from '@/store/plan'
+import { useUserStore } from '@/store/user'
 import { planApi, type CreatePlanParams } from '@/api/plan'
 import { todayStr } from '@/utils/date'
 import type { PlanType, TimeMode } from '@promise-checkin/shared'
 
 const planStore = usePlanStore()
+const userStore = useUserStore()
 const editId = ref(0)
 const isEdit = computed(() => editId.value > 0)
 const step = ref(0)
@@ -182,6 +184,10 @@ async function submit() {
     startDate: form.startDate,
     remark: form.remark || null,
   }
+
+  // 登录后置：游客可以自由浏览、填写表单，点保存才需要登录
+  // （静默登录无感通过；失败或主动退出过则弹框由用户选择）
+  if (!(await userStore.ensureLogin('保存计划'))) return
 
   submitting.value = true
   try {

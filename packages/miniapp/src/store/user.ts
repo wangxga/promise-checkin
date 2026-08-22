@@ -74,6 +74,26 @@ export const useUserStore = defineStore('user', () => {
   }
 
   /**
+   * 操作前确保登录（登录后置模式：浏览自由，产生数据时才需要登录）。
+   * - 已登录：直接通过
+   * - 未登录且非主动退出：先静默登录（无感，不打断操作）
+   * - 静默失败或用户主动退出过：弹框由用户自行选择是否登录（审核合规）
+   * @param action 操作描述，用于弹框文案（如「保存计划」「查看回收站」）
+   */
+  async function ensureLogin(action = '保存'): Promise<boolean> {
+    const tokenStore = useTokenStore()
+    if (tokenStore.isLogin) return true
+    if (!tokenStore.manualLogout && (await silentLogin())) return true
+    const res = await uni.showModal({
+      title: '需要登录',
+      content: `登录后即可${action}`,
+      confirmText: '去登录',
+    })
+    if (res.confirm) uni.navigateTo({ url: '/pages/login/index' })
+    return false
+  }
+
+  /**
    * 检查登录态（首页 onShow 里调用）。
    * 无 token 时先尝试静默登录（无 UI）；仍失败返回 false 进入游客态——
    * 由页面展示可浏览的引导内容 + 用户主动点击的登录入口，
@@ -125,5 +145,5 @@ export const useUserStore = defineStore('user', () => {
     uni.reLaunch({ url: '/pages/today/index' })
   }
 
-  return { profile, isLogin, login, silentLogin, fetchProfile, restoreToken, checkLogin, logout }
+  return { profile, isLogin, login, silentLogin, ensureLogin, fetchProfile, restoreToken, checkLogin, logout }
 })

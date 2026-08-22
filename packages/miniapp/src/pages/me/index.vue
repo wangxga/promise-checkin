@@ -126,8 +126,9 @@ function handleLogout() {
   })
 }
 
-/** 打开回收站 */
+/** 打开回收站（游客先登录：回收站是个人的删除数据，属隐私内容） */
 async function openTrash() {
+  if (!(await userStore.ensureLogin('查看回收站'))) return
   try {
     trashPlans.value = await planApi.trash()
     showTrash.value = true
@@ -153,12 +154,11 @@ async function handleRestore(id: number) {
   <view class="page">
     <view class="profile-card">
       <view class="avatar-col">
-        <!-- 游客态：点击引导登录；已登录：微信官方头像组件换头像 -->
+        <!-- 游客态：点击引导登录（纯占位头像，无角标）；已登录：微信官方头像组件换头像 -->
         <button v-if="isGuest" class="avatar-btn" @click="goLogin">
           <view class="avatar-default">
             <text class="avatar-placeholder">👤</text>
           </view>
-          <view class="avatar-edit-hint">登录</view>
         </button>
         <button
           v-else
@@ -195,7 +195,7 @@ async function handleRestore(id: number) {
         <text class="item-text">回收站</text>
         <text class="arrow">›</text>
       </view>
-      <view class="item" @click="handleLogout">
+      <view v-if="!isGuest" class="item" @click="handleLogout">
         <text class="item-text danger">退出登录</text>
         <text class="arrow">›</text>
       </view>

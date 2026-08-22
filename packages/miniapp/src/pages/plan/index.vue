@@ -1,12 +1,16 @@
 <script setup lang="ts">
 import { onShow } from '@dcloudio/uni-app'
 import { usePlanStore } from '@/store/plan'
+import { useUserStore } from '@/store/user'
 import { progressText, remain, totalDone } from '@/utils/progress'
 import type { Plan } from '@promise-checkin/shared'
 
 const planStore = usePlanStore()
+const userStore = useUserStore()
 
 onShow(() => {
+  // 游客不拉数据（列表自然呈现空状态引导创建）；保存计划时才 ensureLogin
+  if (!userStore.isLogin) return
   planStore.fetchPlans()
 })
 

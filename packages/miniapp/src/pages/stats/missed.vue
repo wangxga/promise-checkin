@@ -2,12 +2,16 @@
 import { ref } from 'vue'
 import { onShow } from '@dcloudio/uni-app'
 import { statsApi, type MissedItem } from '@/api/stats'
+import { useUserStore } from '@/store/user'
 
+const userStore = useUserStore()
 const list = ref<MissedItem[]>([])
 const total = ref(0)
 const loading = ref(false)
 
 onShow(() => {
+  // 游客不拉数据（列表数据为空即空态展示）
+  if (!userStore.isLogin) return
   loadList()
 })
 

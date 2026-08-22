@@ -3,6 +3,7 @@ import { ref, computed, nextTick } from 'vue'
 import { onLoad, onShow } from '@dcloudio/uni-app'
 import { planApi } from '@/api/plan'
 import { usePlanStore } from '@/store/plan'
+import { useUserStore } from '@/store/user'
 import { statsApi, type PlanProgressData } from '@/api/stats'
 import { checkinApi, type CalendarResult } from '@/api/checkin'
 import { totalDone } from '@/utils/progress'
@@ -15,6 +16,7 @@ interface ValuePoint {
 }
 
 const planStore = usePlanStore()
+const userStore = useUserStore()
 const planId = ref(0)
 const plan = ref<Plan | null>(null)
 const progressData = ref<PlanProgressData | null>(null)
@@ -36,9 +38,9 @@ onLoad((options) => {
   planId.value = id
 })
 
-// onShow 刷新（编辑返回后数据更新）
+// onShow 刷新（编辑返回后数据更新）。游客不拉数据（正常流程游客到不了这页，防御性守卫）
 onShow(() => {
-  if (planId.value) loadData()
+  if (planId.value && userStore.isLogin) loadData()
 })
 
 async function loadData() {
