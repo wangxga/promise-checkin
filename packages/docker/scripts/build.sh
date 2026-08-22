@@ -20,7 +20,7 @@ NC='\033[0m'
 
 echo -e "${GREEN}======================================"
 echo "如约打卡后端镜像构建"
-echo "======================================${NC}"
+echo -e "======================================${NC}"
 echo -e "${YELLOW}版本: $VERSION${NC}"
 echo ""
 
@@ -28,6 +28,35 @@ echo ""
 if ! docker version > /dev/null 2>&1; then
     echo -e "${RED}错误: Docker 未运行!${NC}"
     exit 1
+fi
+
+# ---------- 预检 1：编译（NodeNext 严格模式，导入后缀等 ESM 问题在编译期报错）----------
+echo -e "${CYAN}预检：编译 server（tsc / NodeNext）...${NC}"
+if ! pnpm --filter @promise-checkin/server build; then
+    echo -e "${RED}预检失败: 编译不通过，中止构建${NC}"
+    exit 1
+fi
+
+# ---------- 预检 2：启动冒烟（编译能过 ≠ 能启动；需本地 MySQL/Redis 在跑）----------
+if [[ "$SKIP_SMOKE" == "1" ]]; then
+    echo -e "${YELLOW}已跳过启动冒烟（SKIP_SMOKE=1）${NC}"
+else
+    echo -e "${CYAN}预检：启动冒烟（node dist 运行 6 秒，断言启动横幅）...${NC}"
+    # 注意：必须 cd 到 packages/server 跑（dotenv 从 cwd 加载 .env.development）
+    pushd "$PROJECT_ROOT/packages/server" > /dev/null || { echo -e "${RED}冒烟失败: 目录不存在${NC}"; exit 1; }
+    PORT=3999 node dist/app.js > /tmp/checkin-smoke.log 2>&1 &
+    SMOKE_PID=$!
+    popd > /dev/null
+    sleep 6
+    kill $SMOKE_PID 2>/dev/null
+    # 断言式：必须看到启动横幅才算通过（空输出/报错都算失败）
+    if grep -q "已启动" /tmp/checkin-smoke.log; then
+        echo -e "${GREEN}冒烟通过${NC}"
+    else
+        echo -e "${RED}冒烟失败: 编译产物无法启动，中止构建（日志如下）${NC}"
+        head -10 /tmp/checkin-smoke.log
+        exit 1
+    fi
 fi
 
 # 获取项目根目录（scripts/ → docker/ → packages/ → 项目根，上 3 层）
