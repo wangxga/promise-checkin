@@ -21,4 +21,5 @@ minimumReleaseAgeExclude:
   - '@uni-helper/vite-plugin-uni-pages@0.4.6'
 
 allowBuilds:
-  core-js-pure: set this to true or false
+  core-js-pure: true
+  esbuild: true

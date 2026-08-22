@@ -30,6 +30,7 @@
     "@dcloudio/vite-plugin-uni": "vue3",
     "@uni-helper/vite-plugin-uni-manifest": "^0.4.1",
     "@uni-helper/vite-plugin-uni-pages": "^0.4.6",
+    "@types/node": "^20.14.12",
     "@vue/runtime-core": "3.4.21",
     "sass": "^1.77.8",
     "typescript": "^5.5.0",
