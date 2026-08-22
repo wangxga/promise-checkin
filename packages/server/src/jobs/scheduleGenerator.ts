@@ -1,4 +1,4 @@
-import { prisma } from '../lib/prisma'
+import { prisma } from '../lib/prisma.js'
 import { ensurePlanSchedule, syncPlanCounts } from '../modules/plan/plan.service.js'
 import { logger } from '../lib/logger.js'
 
