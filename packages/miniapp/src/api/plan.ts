@@ -14,8 +14,9 @@ export interface ListPlansParams {
   pageSize?: number
 }
 
-/** 新建计划参数（与后端 createPlanSchema 对齐） */
-export interface CreatePlanParams {
+/** 新建计划参数（与后端 createPlanSchema 对齐）。
+ *  用 type 而非 interface：type 别名可隐式赋给 http.post 的 Record<string, unknown> 参数 */
+export type CreatePlanParams = {
   name: string
   type: string
   color?: string

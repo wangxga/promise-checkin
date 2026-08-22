@@ -273,7 +273,7 @@ function prev() {
           <text class="label">缺勤是否计入配额消耗</text>
           <view class="switch-row">
             <text class="switch-hint">开启后缺席也扣配额，关闭则只按实际完成计</text>
-            <switch :checked="form.absenceConsumes" @change="form.absenceConsumes = $event.detail.value" />
+            <switch :checked="form.absenceConsumes" @change="form.absenceConsumes = ($event as UniSwitchEvent).detail.value" />
           </view>
         </view>
       </template>
@@ -354,7 +354,7 @@ function prev() {
         <text class="label">记录数值</text>
         <view class="switch-row">
           <text class="switch-hint">每次打卡可记录一个数值（如血压、背诵量）</text>
-          <switch :checked="form.recordValue" @change="form.recordValue = $event.detail.value" />
+          <switch :checked="form.recordValue" @change="form.recordValue = ($event as UniSwitchEvent).detail.value" />
         </view>
       </view>
       <view v-if="form.recordValue" class="field">

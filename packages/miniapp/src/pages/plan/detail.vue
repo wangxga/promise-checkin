@@ -77,7 +77,7 @@ function drawTrendChart(retry = 0) {
   const query = uni.createSelectorQuery()
   query
     .select('#trendChart')
-    .fields({ node: true, size: true })
+    .fields({ node: true, size: true }, () => {}) // 类型定义要求 callback 参数，实际结果统一走 exec
     .exec((res) => {
       if (!res?.[0]?.node) {
         // canvas node 未就绪，延时重试（最多 5 次，每次 100ms）

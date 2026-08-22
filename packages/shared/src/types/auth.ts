@@ -1,7 +1,8 @@
 import type { User } from './user.js'
 
-/** POST /auth/login 请求体 */
-export interface LoginInput {
+/** POST /auth/login 请求体。
+ *  用 type 而非 interface：type 别名可隐式赋给 http.post 的 Record<string, unknown> 参数 */
+export type LoginInput = {
   /** wx.login() 拿到的 code */
   code: string
   /** 用户授权后的昵称（可选） */

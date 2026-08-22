@@ -52,7 +52,8 @@ export async function request<T = unknown>(options: RequestOptions): Promise<T> 
   return new Promise<T>((resolve, reject) => {
     uni.request({
       url,
-      method,
+      // @dcloudio/types 的 method 联合类型漏了 PATCH（后端有 PATCH 路由在用），这里断言绕过
+      method: method as UniNamespace.RequestOptions['method'],
       data,
       header,
       success: (res) => {
@@ -95,6 +96,8 @@ export const http = {
     request<T>({ ...opts, url, method: 'POST', data }),
   put: <T>(url: string, data?: Record<string, unknown>, opts?: Partial<RequestOptions>) =>
     request<T>({ ...opts, url, method: 'PUT', data }),
+  patch: <T>(url: string, data?: Record<string, unknown>, opts?: Partial<RequestOptions>) =>
+    request<T>({ ...opts, url, method: 'PATCH', data }),
   del: <T>(url: string, opts?: Partial<RequestOptions>) =>
     request<T>({ ...opts, url, method: 'DELETE' }),
 }

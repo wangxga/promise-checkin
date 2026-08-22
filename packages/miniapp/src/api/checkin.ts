@@ -5,8 +5,9 @@
 import { http } from '@/http/http'
 import type { Checkin } from '@promise-checkin/shared'
 
-/** 打卡 upsert 参数 */
-export interface UpsertCheckinParams {
+/** 打卡 upsert 参数。
+ *  用 type 而非 interface：type 别名可隐式赋给 http.post 的 Record<string, unknown> 参数 */
+export type UpsertCheckinParams = {
   scheduledDate: string
   scheduledTime?: string | null
   status: 'done' | 'missed' | 'pending'
