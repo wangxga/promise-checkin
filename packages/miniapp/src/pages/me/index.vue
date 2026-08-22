@@ -111,6 +111,12 @@ function cancelNickname() {
   editNickname.value = ''
 }
 
+/** 游客态：静默登录失败时「我的」页展示引导，点任意资料区去登录 */
+const isGuest = computed(() => !userStore.isLogin)
+function goLogin() {
+  uni.navigateTo({ url: '/pages/login/index' })
+}
+
 function handleLogout() {
   uni.showModal({
     title: '确认退出登录？',
@@ -147,8 +153,15 @@ async function handleRestore(id: number) {
   <view class="page">
     <view class="profile-card">
       <view class="avatar-col">
-        <!-- 微信官方头像组件：open-type="chooseAvatar" 弹微信原生选图弹窗 -->
+        <!-- 游客态：点击引导登录；已登录：微信官方头像组件换头像 -->
+        <button v-if="isGuest" class="avatar-btn" @click="goLogin">
+          <view class="avatar-default">
+            <text class="avatar-placeholder">👤</text>
+          </view>
+          <view class="avatar-edit-hint">登录</view>
+        </button>
         <button
+          v-else
           class="avatar-btn"
           open-type="chooseAvatar"
           :disabled="avatarUploading"
@@ -166,13 +179,13 @@ async function handleRestore(id: number) {
           <!-- 自定义头像才显示"换"角标 -->
           <view v-if="isCustomAvatar" class="avatar-edit-hint">换</view>
         </button>
-        <!-- 默认头像时引导用户去设置 -->
-        <text v-if="!isCustomAvatar" class="avatar-tip">点头像设置</text>
+        <!-- 默认头像时引导用户去设置（游客态不显示，避免误导） -->
+        <text v-if="!isCustomAvatar && !isGuest" class="avatar-tip">点头像设置</text>
       </view>
       <view class="info">
-        <view class="nickname-row" @click="openNicknamePopup">
-          <text class="nickname">{{ userStore.profile?.nickname || '未设置昵称' }}</text>
-          <text class="edit-icon">✎</text>
+        <view class="nickname-row" @click="isGuest ? goLogin() : openNicknamePopup()">
+          <text class="nickname">{{ isGuest ? '登录 / 注册' : (userStore.profile?.nickname || '未设置昵称') }}</text>
+          <text class="edit-icon">{{ isGuest ? '›' : '✎' }}</text>
         </view>
       </view>
     </view>

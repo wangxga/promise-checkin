@@ -60,23 +60,38 @@ export const useUserStore = defineStore('user', () => {
   }
 
   /**
-   * 检查登录态，未登录或 token 失效则跳登录页
-   * 在首页 onShow 里调用（onLaunch 太早，reLaunch 会被吞）
+   * 静默登录：复用 login() 全流程但吞掉错误，全程无 UI、无授权弹窗。
+   * 供启动时自动登录用——审核要求「不得一进入就要求授权登录，
+   * 登录须用户自行选择」，wx.login 换 openid 属无感静默操作，不触发任何授权 UI
+   */
+  async function silentLogin(): Promise<boolean> {
+    try {
+      await login()
+      return true
+    } catch {
+      return false
+    }
+  }
+
+  /**
+   * 检查登录态（首页 onShow 里调用）。
+   * 无 token 时先尝试静默登录（无 UI）；仍失败返回 false 进入游客态——
+   * 由页面展示可浏览的引导内容 + 用户主动点击的登录入口，
+   * 不再自动跳登录页（审核要求：先体验浏览，登录由用户自行选择）
    */
   async function checkLogin() {
     const tokenStore = useTokenStore()
     if (!tokenStore.isLogin) {
-      uni.reLaunch({ url: '/pages/login/index' })
-      return false
+      return await silentLogin()
     }
     try {
       await fetchProfile()
       return true
     } catch {
+      // token 失效：清掉后尝试静默重登（换新 token），仍失败进游客态
       tokenStore.clear()
       profile.value = null
-      uni.reLaunch({ url: '/pages/login/index' })
-      return false
+      return await silentLogin()
     }
   }
 
@@ -106,5 +121,5 @@ export const useUserStore = defineStore('user', () => {
     uni.reLaunch({ url: '/pages/login/index' })
   }
 
-  return { profile, isLogin, login, fetchProfile, restoreToken, checkLogin, logout }
+  return { profile, isLogin, login, silentLogin, fetchProfile, restoreToken, checkLogin, logout }
 })

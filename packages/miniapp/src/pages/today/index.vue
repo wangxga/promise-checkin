@@ -8,16 +8,26 @@ const checkinStore = useCheckinStore()
 const userStore = useUserStore()
 const loading = computed(() => checkinStore.loading)
 const authChecked = ref(false) // 登录验证完成前不渲染业务内容
+const isGuest = ref(false) // 游客态：静默登录失败，展示可浏览的引导，登录由用户主动选择
 const submittingId = ref(0) // 正在打卡的 checkinId，防重复点击
 
 onShow(async () => {
   authChecked.value = false
-  // 先检查登录态，未登录跳 login（此时页面只显示空白，看不到任何业务内容）
+  isGuest.value = false
+  // 先静默登录（无 UI、无授权弹窗）；失败进游客态，不跳登录页
   const ok = await userStore.checkLogin()
-  if (!ok) return
+  if (!ok) {
+    isGuest.value = true
+    return
+  }
   authChecked.value = true
   checkinStore.fetchOverview()
 })
+
+/** 游客主动登录（审核要求：登录须用户自行选择） */
+function goLogin() {
+  uni.navigateTo({ url: '/pages/login/index' })
+}
 
 /** 一键打卡（recordValue 计划先弹数值输入） */
 async function handleQuickDone(
@@ -66,8 +76,19 @@ function goMissed() {
 
 <template>
   <view class="page">
-    <!-- 登录验证完成前显示空白，防止未登录用户看到业务内容 -->
-    <view v-if="!authChecked" class="auth-loading" />
+    <!-- 登录验证完成前显示空白，防止闪屏 -->
+    <view v-if="!authChecked && !isGuest" class="auth-loading" />
+
+    <!-- 游客态：可浏览的产品介绍 + 用户主动选择的登录入口。
+         审核要求：不得一进入就要求授权登录，登录须用户自行选择 -->
+    <view v-else-if="isGuest" class="guest-panel">
+      <view class="guest-icon">📅</view>
+      <text class="guest-title">如约打卡</text>
+      <text class="guest-desc">课程、习惯，按计划自动排期</text>
+      <text class="guest-desc">每日待办提醒 · 一键打卡 · 缺席追溯</text>
+      <button class="guest-login-btn" @click="goLogin">微信登录</button>
+      <text class="guest-tip">登录后即可创建计划、开始打卡</text>
+    </view>
 
     <template v-else>
     <!-- 今日待办 -->
@@ -164,6 +185,45 @@ function goMissed() {
   background: #34c759;
   color: #fff;
 }
+/* 游客态引导面板 */
+.guest-panel {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 180rpx 64rpx 0;
+}
+.guest-icon {
+  font-size: 96rpx;
+  margin-bottom: 32rpx;
+}
+.guest-title {
+  font-size: 44rpx;
+  font-weight: 600;
+  color: #1f1f1f;
+  margin-bottom: 20rpx;
+}
+.guest-desc {
+  font-size: 28rpx;
+  color: #8a8a8a;
+  line-height: 1.7;
+}
+.guest-login-btn {
+  margin-top: 72rpx;
+  width: 420rpx;
+  height: 88rpx;
+  line-height: 88rpx;
+  border-radius: 44rpx;
+  background: #07c160;
+  color: #fff;
+  font-size: 32rpx;
+  font-weight: 500;
+}
+.guest-tip {
+  margin-top: 24rpx;
+  font-size: 24rpx;
+  color: #b0b0b0;
+}
+
 .auth-loading {
   position: fixed;
   top: 0;
