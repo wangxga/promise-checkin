@@ -45,12 +45,13 @@ app.use(
 // 限流（Redis 滑窗，Redis 不可用时降级放行）
 app.use(rateLimit)
 
+// 静态文件托管（头像等）——挂到 urlPrefix（默认 /uploads）下。
+// 必须放在 JWT 鉴权【之前】：小程序 <image> 请求带不了 Authorization header，
+// 放在鉴权后会被 401 拦截（生产实测踩过）
+app.use(mount(config.upload.urlPrefix, serve(config.upload.dir, { maxage: 30 * 24 * 3600 * 1000 })))
+
 // JWT 鉴权（白名单内部处理，不需要的话直接放行）
 app.use(jwtMiddleware(config.app.apiPrefix))
-
-// 静态文件托管（头像等）——挂到 urlPrefix（默认 /uploads）下
-// 生产环境 NPM 反代到后端，静态也走这里；小程序 <image> 带不了鉴权 header，必须公开
-app.use(mount(config.upload.urlPrefix, serve(config.upload.dir, { maxage: 30 * 24 * 3600 * 1000 })))
 
 // 路由
 app.use(rootRouter.routes()).use(rootRouter.allowedMethods())

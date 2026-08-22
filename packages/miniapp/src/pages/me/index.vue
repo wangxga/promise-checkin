@@ -65,6 +65,15 @@ function openNicknamePopup() {
   showNicknamePopup.value = true
 }
 
+/** 关闭昵称弹窗：必须先收键盘、等落下再关弹窗。
+ *  真机上 type=nickname 输入框的微信原生「用微信昵称」推荐条挂在键盘上，
+ *  键盘没收就关弹窗，推荐条/弹窗会残留在屏幕底部（工具里模拟不出） */
+async function closeNicknamePopup() {
+  uni.hideKeyboard()
+  await new Promise((resolve) => setTimeout(resolve, 150))
+  showNicknamePopup.value = false
+}
+
 /** 保存昵称（由弹窗的"保存"按钮触发） */
 async function saveNickname() {
   const nickname = editNickname.value.trim()
@@ -74,14 +83,12 @@ async function saveNickname() {
   }
   if (savingNickname.value) return
   savingNickname.value = true
-  // 保存前先收起键盘，避免微信昵称推荐条残留遮挡底部菜单
-  uni.hideKeyboard()
   try {
     await authApi.updateProfile({ nickname })
     if (userStore.profile) {
       userStore.profile.nickname = nickname
     }
-    showNicknamePopup.value = false
+    await closeNicknamePopup()
     uni.showToast({ title: '昵称已更新', icon: 'success' })
   } catch {
     uni.showToast({ title: '更新失败', icon: 'none' })
@@ -92,8 +99,7 @@ async function saveNickname() {
 
 /** 取消编辑昵称（也收起键盘） */
 function cancelNickname() {
-  uni.hideKeyboard()
-  showNicknamePopup.value = false
+  closeNicknamePopup()
   editNickname.value = ''
 }
 
