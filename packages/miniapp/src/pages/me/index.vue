@@ -11,6 +11,8 @@ const trashPlans = ref<Plan[]>([])
 const showTrash = ref(false)
 const showNicknamePopup = ref(false)
 const editNickname = ref('')
+/** 输入框焦点独立控制：真机上动态 focus 需渲染后置 true，关闭时置 false 失焦收推荐条 */
+const nicknameFocus = ref(false)
 const savingNickname = ref(false)
 const avatarUploading = ref(false)
 
@@ -63,12 +65,18 @@ async function onChooseAvatar(e: { detail: { avatarUrl: string } }) {
 function openNicknamePopup() {
   editNickname.value = userStore.profile?.nickname || ''
   showNicknamePopup.value = true
+  // 真机上动态 :focus 必须在弹窗渲染完成后再置 true 才会弹键盘/出推荐条
+  nicknameFocus.value = false
+  setTimeout(() => {
+    nicknameFocus.value = true
+  }, 300)
 }
 
-/** 关闭昵称弹窗：必须先收键盘、等落下再关弹窗。
- *  真机上 type=nickname 输入框的微信原生「用微信昵称」推荐条挂在键盘上，
- *  键盘没收就关弹窗，推荐条/弹窗会残留在屏幕底部（工具里模拟不出） */
+/** 关闭昵称弹窗：先让输入框失焦、等推荐条收起再关弹窗。
+ *  真机上微信原生「用微信昵称」推荐条挂在输入框焦点上（不是键盘上），
+ *  不失焦直接关弹窗，推荐条会残留在屏幕底部（工具里模拟不出） */
 async function closeNicknamePopup() {
+  nicknameFocus.value = false
   uni.hideKeyboard()
   await new Promise((resolve) => setTimeout(resolve, 150))
   showNicknamePopup.value = false
@@ -217,7 +225,7 @@ async function handleRestore(id: number) {
             :value="editNickname"
             placeholder="请输入昵称"
             :maxlength="20"
-            :focus="showNicknamePopup"
+            :focus="nicknameFocus"
             @input="editNickname = ($event as UniInputEvent).detail.value"
           />
         </view>
