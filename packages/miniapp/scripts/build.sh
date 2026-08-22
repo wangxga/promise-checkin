@@ -13,6 +13,13 @@
 # 原理: Vite 中 shell 环境变量优先级高于 env/ 目录下的 .env 文件，
 #       所以 VITE_SERVER_BASEURL=xxx 前缀可以在不改配置文件的情况下切换后端。
 
+# 本脚本用了 bash 专属语法（echo -e / [[ ]]）。
+# 两种情况都切到真 bash 再执行：非 bash（dash 等，BASH_VERSION 为空），
+# 或 bash 的 POSIX 模式（macOS 的 /bin/sh——BASH_VERSION 非空但 echo -e 等行为不同）
+if [ -z "${BASH_VERSION:-}" ] || shopt -qo posix 2>/dev/null; then
+    exec bash "$0" "$@"
+fi
+
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
@@ -48,8 +55,9 @@ while [[ $# -gt 0 ]]; do
     esac
 done
 
-# ---------- 目录定位（scripts/ → miniapp/ 是 1 层；miniapp/ → packages/ → 项目根 是 2 层）----------
-SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+# ---------- 目录定位（scripts/ → miniapp/ 是 1 层；miniapp/ → packages/ → 项目根 是 2 层）。
+# 用 $0 而非 BASH_SOURCE：POSIX 模式 bash（/bin/sh）下后者不可靠
+SCRIPT_DIR="$( cd "$( dirname "$0" )" && pwd )"
 MINIAPP_DIR="$(dirname "$SCRIPT_DIR")"
 PROJECT_ROOT="$(dirname "$(dirname "$MINIAPP_DIR")")"
 cd "$PROJECT_ROOT"

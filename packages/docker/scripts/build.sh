@@ -10,6 +10,13 @@
 # 部署流程：
 #   本地运行此脚本 → 生成 checkin-backend-v1.0.tar → 上传到服务器 → docker load 导入 → docker compose up
 
+# 本脚本用了 bash 专属语法（echo -e / read -p / [[ ]]）。
+# 两种情况都切到真 bash 再执行：非 bash（dash 等，BASH_VERSION 为空），
+# 或 bash 的 POSIX 模式（macOS 的 /bin/sh——BASH_VERSION 非空但 echo -e 等行为不同）
+if [ -z "${BASH_VERSION:-}" ] || shopt -qo posix 2>/dev/null; then
+    exec bash "$0" "$@"
+fi
+
 VERSION=${1:-"v1.0"}
 
 RED='\033[0;31m'
@@ -17,6 +24,13 @@ GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 CYAN='\033[0;36m'
 NC='\033[0m'
+
+# ---------- 目录解析（必须在所有使用 PROJECT_ROOT 的逻辑之前）----------
+# 获取项目根目录（scripts/ → docker/ → packages/ → 项目根，上 3 层）。
+# 用 $0 而非 BASH_SOURCE：POSIX 模式 bash（/bin/sh）下后者不可靠
+SCRIPT_DIR="$( cd "$( dirname "$0" )" && pwd )"
+PROJECT_ROOT="$(dirname "$(dirname "$(dirname "$SCRIPT_DIR")")")"
+cd "$PROJECT_ROOT"
 
 echo -e "${GREEN}======================================"
 echo "如约打卡后端镜像构建"
@@ -49,6 +63,7 @@ else
     popd > /dev/null
     sleep 6
     kill $SMOKE_PID 2>/dev/null
+    wait $SMOKE_PID 2>/dev/null
     # 断言式：必须看到启动横幅才算通过（空输出/报错都算失败）
     if grep -q "已启动" /tmp/checkin-smoke.log; then
         echo -e "${GREEN}冒烟通过${NC}"
@@ -58,11 +73,6 @@ else
         exit 1
     fi
 fi
-
-# 获取项目根目录（scripts/ → docker/ → packages/ → 项目根，上 3 层）
-SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
-PROJECT_ROOT="$(dirname "$(dirname "$(dirname "$SCRIPT_DIR")")")"
-cd "$PROJECT_ROOT"
 
 echo -e "${CYAN}项目根目录: $PROJECT_ROOT${NC}"
 echo ""
