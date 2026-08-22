@@ -1,7 +1,7 @@
 import { prisma } from '../lib/prisma.js'
 import { logger } from '../lib/logger.js'
 import { syncPlanCounts } from '../modules/plan/plan.service.js'
-import { now, shanghaiDeadline } from '../shared-utils/timezone.js'
+import { now, shanghaiDeadline, shanghaiDateStr } from '../shared-utils/timezone.js'
 
 /**
  * 逾期扫描任务
@@ -31,7 +31,7 @@ export async function runOverdueScanner(): Promise<void> {
 
     for (const record of records) {
       // 截止时间 = 上海时区的 scheduledDate + scheduledTime + graceHours
-      const dateStr = record.scheduledDate.toISOString().slice(0, 10)
+      const dateStr = shanghaiDateStr(record.scheduledDate)
       const deadline = shanghaiDeadline(dateStr, record.scheduledTime, plan.overdueGraceHours)
 
       if (now() > deadline) {

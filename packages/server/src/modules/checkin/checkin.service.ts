@@ -5,6 +5,7 @@ import { syncPlanCounts } from '../plan/plan.service.js'
 import { toCheckinDTO } from '../../shared-utils/mapper.js'
 import { BusinessError } from '../../shared-utils/errors.js'
 import { prisma } from '../../lib/prisma.js'
+import { shanghaiTodayStr, shanghaiTodayRange } from '../../shared-utils/timezone.js'
 import type { Checkin } from '@promise-checkin/shared'
 import type { UpsertCheckinDTO, UpdateCheckinDTO, RescheduleDTO, RetroactiveDTO } from './checkin.dto.js'
 
@@ -152,10 +153,9 @@ export async function retroactiveDone(userId: number, planId: number, dto: Retro
   const scheduledDate = new Date(dto.scheduledDate)
   const scheduledTime = dto.scheduledTime ?? null
 
-  // 校验：补录只能补过去或今天，不能补未来日期
-  const todayDate = new Date()
-  todayDate.setHours(23, 59, 59, 999)
-  if (scheduledDate > todayDate) {
+  // 校验：补录只能补过去或今天（上海时区），不能补未来日期
+  const todayEnd = shanghaiTodayRange().end
+  if (scheduledDate > todayEnd) {
     throw BusinessError.validation({ scheduledDate: '补录日期不能是未来' })
   }
 
@@ -208,11 +208,13 @@ export async function listCheckins(userId: number, planId: number, opts: {
 /** 日历视图（某月所有记录） */
 export async function getCalendar(userId: number, planId: number, month?: string) {
   await assertOwnPlan(userId, planId)
-  const now = new Date()
-  const y = month ? parseInt(month.slice(0, 4)) : now.getFullYear()
-  const m = month ? parseInt(month.slice(5, 7)) : now.getMonth() + 1
-  const startDate = new Date(y, m - 1, 1)
-  const endDate = new Date(y, m, 0, 23, 59, 59)
+  // 月份边界按上海时区算：未传 month 时取上海当前年月
+  const todayStr = shanghaiTodayStr()
+  const y = month ? parseInt(month.slice(0, 4)) : parseInt(todayStr.slice(0, 4))
+  const m = month ? parseInt(month.slice(5, 7)) : parseInt(todayStr.slice(5, 7))
+  // 月份起止用 UTC 午夜（与 scheduledDate @db.Date 的读写口径一致，不受服务器时区影响）
+  const startDate = new Date(Date.UTC(y, m - 1, 1))
+  const endDate = new Date(Date.UTC(y, m, 0, 23, 59, 59, 999))
 
   const records = await checkinRepository.listByPlan(BigInt(planId), { startDate, endDate })
   return {

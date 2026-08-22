@@ -1,5 +1,6 @@
 import type { Plan, Checkin, PlanProgress, ScheduleConfig } from '@promise-checkin/shared'
 import type { Plan as PrismaPlan, Checkin as PrismaCheckin } from '@prisma/client'
+import { shanghaiDateStr } from './timezone.js'
 
 /**
  * Mapper：Prisma 模型 → 对外 DTO
@@ -27,8 +28,8 @@ export function toPlanDTO(p: PrismaPlan): Plan {
     overdueGraceHours: p.overdueGraceHours,
     recordValue: p.recordValue,
     valueUnit: p.valueUnit,
-    startDate: p.startDate ? p.startDate.toISOString().slice(0, 10) : null,
-    endDate: p.endDate ? p.endDate.toISOString().slice(0, 10) : null,
+    startDate: p.startDate ? shanghaiDateStr(p.startDate) : null,
+    endDate: p.endDate ? shanghaiDateStr(p.endDate) : null,
     status: p.status as Plan['status'],
     remark: p.remark,
     createdAt: p.createdAt.toISOString(),
@@ -44,7 +45,7 @@ export function toCheckinDTO(c: PrismaCheckin): Checkin {
     planId: Number(c.planId),
     userId: Number(c.userId),
     memberId: c.memberId ? Number(c.memberId) : null,
-    scheduledDate: c.scheduledDate.toISOString().slice(0, 10),
+    scheduledDate: shanghaiDateStr(c.scheduledDate),
     scheduledTime: c.scheduledTime,
     status: c.status as Checkin['status'],
     actualTime: c.actualTime?.toISOString() ?? null,
@@ -52,9 +53,7 @@ export function toCheckinDTO(c: PrismaCheckin): Checkin {
     remark: c.remark,
     source: c.source as Checkin['source'],
     adjustmentType: (c.adjustmentType as Checkin['adjustmentType']) ?? null,
-    originalScheduledDate: c.originalScheduledDate
-      ? c.originalScheduledDate.toISOString().slice(0, 10)
-      : null,
+    originalScheduledDate: c.originalScheduledDate ? shanghaiDateStr(c.originalScheduledDate) : null,
     originalScheduledTime: c.originalScheduledTime,
     createdAt: c.createdAt.toISOString(),
     updatedAt: c.updatedAt.toISOString(),

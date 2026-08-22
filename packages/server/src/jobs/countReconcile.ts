@@ -8,8 +8,8 @@ import { syncPlanCounts } from '../modules/plan/plan.service.js'
  * 只校对过去 24h 有 checkin 变更的计划（增量，不全表扫）
  */
 export async function runCountReconcile(): Promise<void> {
-  const since = new Date()
-  since.setHours(since.getHours() - 24)
+  // 过去 24h：纯时间运算（不涉及时区日期边界）
+  const since = new Date(Date.now() - 24 * 60 * 60 * 1000)
 
   // 找过去 24h 有记录变更的计划
   const affectedPlanIds = await prisma.checkin.findMany({

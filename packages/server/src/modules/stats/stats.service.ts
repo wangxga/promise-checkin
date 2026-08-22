@@ -3,7 +3,7 @@ import { planRepository } from '../plan/plan.repository.js'
 import { checkinRepository } from '../checkin/checkin.repository.js'
 import { assertOwnPlan } from '../plan/plan.service.js'
 import { toPlanDTO, toCheckinDTO, calcProgress } from '../../shared-utils/mapper.js'
-import { shanghaiTodayRange, shanghaiTodayStr } from '../../shared-utils/timezone.js'
+import { shanghaiTodayRange, shanghaiTodayStr, shanghaiDateStr } from '../../shared-utils/timezone.js'
 import { generateSlots } from '../../shared-utils/schedule.js'
 import type { PlanProgress } from '@promise-checkin/shared'
 
@@ -60,7 +60,7 @@ export async function getOverview(userId: number) {
       planColor: c.plan.color,
       recordValue: c.plan.recordValue,
       valueUnit: c.plan.valueUnit,
-      scheduledDate: c.scheduledDate.toISOString().slice(0, 10),
+      scheduledDate: shanghaiDateStr(c.scheduledDate),
       scheduledTime: c.scheduledTime,
     })),
     todayDoneList: todayDone.map((c) => ({
@@ -105,9 +105,11 @@ export async function getPlanProgress(userId: number, planId: number): Promise<P
     const rules = plan.scheduleConfig as { rules?: unknown[] } | null
     const rulesCount = rules?.rules?.length ?? 1
     const weeks = Math.ceil(progress.remain / rulesCount)
-    const est = new Date()
-    est.setDate(est.getDate() + weeks * 7)
-    estimatedEndDate = est.toISOString().slice(0, 10)
+    // 以上海时区今天为基准，推算 N 周后的日期（用 UTC 午夜避免本地时区污染）
+    const todayStr = shanghaiTodayStr()
+    const est = new Date(`${todayStr}T00:00:00.000Z`)
+    est.setUTCDate(est.getUTCDate() + weeks * 7)
+    estimatedEndDate = shanghaiDateStr(est)
   }
 
   return {
@@ -129,27 +131,27 @@ async function calcStreak(planId: bigint): Promise<number> {
   const allSlots = await checkinRepository.listByPlan(planId)
   if (!allSlots.length) return 0
   const doneSet = new Set(
-    allSlots.filter((c) => c.status === 'done').map((c) => c.scheduledDate.toISOString().slice(0, 10)),
+    allSlots.filter((c) => c.status === 'done').map((c) => shanghaiDateStr(c.scheduledDate)),
   )
   // 只看 ≤ 今天的槽位日（排除未来 pending），"今天"按上海时区
   const todayStr = shanghaiTodayStr()
   const slotDays = [
-    ...new Set(allSlots.map((c) => c.scheduledDate.toISOString().slice(0, 10))),
+    ...new Set(allSlots.map((c) => shanghaiDateStr(c.scheduledDate))),
   ]
     .filter((ds) => ds <= todayStr)
     .sort()
   if (!slotDays.length) return 0
 
   let streak = 0
-  // 从最近的过去槽位日往前数
-  const d = new Date(slotDays[slotDays.length - 1] + 'T00:00:00')
+  // 从最近的过去槽位日往前数（用 UTC 午夜构造，避免本地时区污染）
+  const d = new Date(slotDays[slotDays.length - 1] + 'T00:00:00.000Z')
   const earliest = slotDays[0]
-  while (d.toISOString().slice(0, 10) >= earliest) {
-    const ds = d.toISOString().slice(0, 10)
+  while (shanghaiDateStr(d) >= earliest) {
+    const ds = shanghaiDateStr(d)
     // 这天有排期但没完成 → 中断
     if (slotDays.includes(ds) && !doneSet.has(ds)) break
     if (doneSet.has(ds)) streak++
-    d.setDate(d.getDate() - 1)
+    d.setUTCDate(d.getUTCDate() - 1)
   }
   return streak
 }
@@ -179,7 +181,7 @@ export async function getPlanValues(userId: number, planId: number, limit = 30) 
   return {
     unit: plan.valueUnit,
     values: records.map((r) => ({
-      date: r.scheduledDate.toISOString().slice(0, 10),
+      date: shanghaiDateStr(r.scheduledDate),
       value: Number(r.value),
     })),
   }
