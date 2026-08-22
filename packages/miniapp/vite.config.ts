@@ -28,4 +28,15 @@ export default defineConfig({
       '@': path.resolve(__dirname, 'src'),
     },
   },
+  css: {
+    preprocessorOptions: {
+      scss: {
+        // 静默 Sass 弃用警告（全部来自 wot-design-uni / Vite 旧编译管线，非项目自身样式）：
+        // - import / global-builtin：组件库还在用 @import 和全局内建函数（Sass 3.0 移除），
+        //   quietDeps 在 Vite 5.2 的旧管线（自定义 importer）下不生效，只能显式静默
+        // - legacy-js-api：Vite 5.2 固定用旧 JS API 调 Sass（升 5.4 才能切 modern，uni-app 锁版本）
+        silenceDeprecations: ['import', 'global-builtin', 'legacy-js-api'],
+      },
+    },
+  },
 })
