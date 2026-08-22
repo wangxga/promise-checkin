@@ -44,6 +44,7 @@ export async function request<T = unknown>(options: RequestOptions): Promise<T> 
     data,
     showLoading = false,
     header = { 'Content-Type': 'application/json' },
+    silentAuthError = false,
   } = options
 
   if (showLoading) uni.showLoading({ title: '加载中', mask: true })
@@ -62,16 +63,16 @@ export async function request<T = unknown>(options: RequestOptions): Promise<T> 
             resolve(body.data)
             return
           }
-          // token 失效
+          // token 失效：默认跳登录，silentAuthError 模式下不跳（供启动时静默验证用）
           if (body.code === ErrorCode.UNAUTHORIZED || body.code === ErrorCode.TOKEN_EXPIRED) {
-            toLogin()
+            if (!silentAuthError) toLogin()
           }
           reject(new ApiError(body.code, body.message, body.data))
           return
         }
-        // 401 直接跳登录
+        // 401 直接跳登录（silentAuthError 模式下不跳）
         if (res.statusCode === 401) {
-          toLogin()
+          if (!silentAuthError) toLogin()
         }
         reject(new ApiError(body.code ?? ErrorCode.INTERNAL_ERROR, body.message ?? '请求失败'))
       },

@@ -20,12 +20,13 @@ async function handleLogin() {
   loading.value = true
   try {
     await userStore.login()
-    uni.showToast({ title: '登录成功', icon: 'success' })
-    setTimeout(() => uni.switchTab({ url: '/pages/today/index' }), 600)
-  } catch {
-    uni.showToast({ title: '登录失败，请重试', icon: 'none' })
-  } finally {
     loading.value = false
+    // 跳转完成后再弹 toast（延迟一帧，避免页面切换瞬间 toast 上下文未就绪）
+    uni.switchTab({ url: '/pages/today/index' })
+    setTimeout(() => uni.showToast({ title: '登录成功', icon: 'success' }), 300)
+  } catch {
+    loading.value = false
+    uni.showToast({ title: '登录失败，请重试', icon: 'none' })
   }
 }
 </script>
@@ -45,7 +46,10 @@ async function handleLogin() {
         <view class="checkbox" :class="{ checked: agreed }" @click="agreed = !agreed">
           <text v-if="agreed" class="check-mark">✓</text>
         </view>
-        <text class="agreement" @click="agreed = !agreed">我已阅读并同意<text class="link" @click.stop="goPrivacy">《隐私政策》</text></text>
+        <view class="agreement">
+          <text @click="agreed = !agreed">我已阅读并同意</text>
+          <text class="link" @click="goPrivacy">《隐私政策》</text>
+        </view>
       </view>
     </view>
   </view>
@@ -132,6 +136,8 @@ async function handleLogin() {
   font-size: 20rpx;
 }
 .agreement {
+  display: flex;
+  align-items: center;
   font-size: 22rpx;
   color: #ababab;
 }

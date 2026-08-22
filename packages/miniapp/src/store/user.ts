@@ -17,6 +17,10 @@ export const useUserStore = defineStore('user', () => {
   /**
    * 微信登录全流程
    * wx.login 拿 code → 调后端登录 → 存 token → 拉用户信息
+   *
+   * 说明：微信 2022.10 废弃 getUserProfile，登录时拿不到真实头像/昵称。
+   * 后端会自动给新用户生成默认昵称（打卡者#xxxx）和默认头像，
+   * 用户后续可在「我的」主动设置。
    */
   async function login(): Promise<LoginResult> {
     // 1. wx.login 拿 code
@@ -37,21 +41,10 @@ export const useUserStore = defineStore('user', () => {
       }
     }
 
-    // 2. 获取用户资料（可选，失败不阻塞登录）
-    let nickname: string | undefined
-    let avatarUrl: string | undefined
-    try {
-      const userInfo = await uni.getUserProfile({ desc: '用于完善用户资料' })
-      nickname = userInfo.userInfo.nickName
-      avatarUrl = userInfo.userInfo.avatarUrl
-    } catch {
-      // 用户拒绝授权资料，正常继续
-    }
+    // 2. 调后端登录（后端自动生成默认昵称/头像）
+    const result = await authApi.login({ code })
 
-    // 3. 调后端登录
-    const result = await authApi.login({ code, nickname, avatarUrl })
-
-    // 4. 存 token + 用户信息
+    // 3. 存 token + 用户信息
     const tokenStore = useTokenStore()
     tokenStore.set(result.accessToken, result.refreshToken)
     profile.value = result.user
@@ -87,14 +80,21 @@ export const useUserStore = defineStore('user', () => {
     }
   }
 
-  /** 启动时静默验证 token（不跳转，失败只清空） */
+  /** 启动时静默验证 token（不跳转，失败只清空）。
+   *  用 silentAuthError 模式调 getMe，401 不触发全局 toLogin reLaunch，
+   *  避免和用户主动操作（如点隐私政策 navigateTo）产生的页面跳转冲突 */
   function restoreToken() {
     const tokenStore = useTokenStore()
     if (tokenStore.isLogin) {
-      fetchProfile().catch(() => {
-        tokenStore.clear()
-        profile.value = null
-      })
+      authApi
+        .getMe({ silentAuthError: true })
+        .then((user) => {
+          profile.value = user
+        })
+        .catch(() => {
+          tokenStore.clear()
+          profile.value = null
+        })
     }
   }
 

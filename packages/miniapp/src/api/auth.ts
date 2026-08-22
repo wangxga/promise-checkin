@@ -13,8 +13,10 @@ export const authApi = {
   refresh: (refreshToken: string) =>
     http.post<LoginResult>('/auth/refresh', { refreshToken }),
 
-  /** 当前用户信息 */
-  getMe: () => http.get<User>('/auth/me'),
+  /** 当前用户信息。
+   *  silentAuthError=true 时，401 不触发跳登录页（供启动时静默 token 验证用） */
+  getMe: (opts?: { silentAuthError?: boolean }) =>
+    http.get<User>('/auth/me', opts),
 
   /** 更新昵称和头像 */
   updateProfile: (data: { nickname?: string; avatarUrl?: string }) =>

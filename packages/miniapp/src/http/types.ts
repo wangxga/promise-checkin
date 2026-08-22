@@ -17,6 +17,9 @@ export interface RequestOptions {
   auth?: boolean
   /** 自定义 header */
   header?: Record<string, string>
+  /** 401/鉴权失败时不自动跳登录页（默认 false，即默认会跳）。
+   *  启动时的静默 token 验证（restoreToken）应设 true，避免页面跳转冲突 */
+  silentAuthError?: boolean
 }
 
 export type { ApiResponse }

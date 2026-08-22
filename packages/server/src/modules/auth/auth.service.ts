@@ -4,6 +4,7 @@ import { signAccessToken, signRefreshToken, verifyRefreshToken } from '../../lib
 import { BusinessError } from '../../shared-utils/errors.js'
 import { logger } from '../../lib/logger.js'
 import { config } from '../../config/index.js'
+import { randomBytes } from 'node:crypto'
 import type { LoginResult, User } from '@promise-checkin/shared'
 import type { LoginDTO } from './auth.dto.js'
 
@@ -37,8 +38,53 @@ function toUserDTO(u: {
 }
 
 /**
+ * 生成默认昵称：打卡者#xxxx（4 位 hex，避免碰撞也不可猜测）
+ */
+function generateDefaultNickname(): string {
+  return `打卡者#${randomBytes(2).toString('hex')}`
+}
+
+/**
+ * 默认头像 URL（随镜像分发的静态文件）
+ */
+function defaultAvatarUrl(): string {
+  return `${config.upload.urlPrefix}/default-avatar.png`
+}
+
+/**
+ * 判断昵称是否为无效值（需要回填默认值）
+ * - 空/null
+ * - "微信用户"（getUserProfile 废弃后返回的固定匿名值）
+ * - "昵称"等明显占位
+ */
+function isInvalidNickname(nickname: string | null): boolean {
+  if (!nickname) return true
+  const trimmed = nickname.trim()
+  if (!trimmed) return true
+  // getUserProfile 废弃后的匿名垃圾值
+  const ANONYMOUS_NAMES = ['微信用户', '昵称']
+  return ANONYMOUS_NAMES.includes(trimmed)
+}
+
+/**
+ * 判断头像 URL 是否为无效值（需要回填默认值）
+ * - 空/null
+ * - 微信默认灰头像（thirdwx.qlogo.cn 的 132 尺寸默认图）
+ */
+function isInvalidAvatarUrl(avatarUrl: string | null): boolean {
+  if (!avatarUrl) return true
+  const trimmed = avatarUrl.trim()
+  if (!trimmed) return true
+  // getUserProfile 废弃后返回的微信默认灰头像 URL
+  return trimmed.includes('thirdwx.qlogo.cn')
+}
+
+/**
  * 登录
  * code → code2Session 换 openid → 查建 user → 签发双 token
+ *
+ * 说明：微信 2022.10 起废弃了 getUserProfile，登录时拿不到真实头像/昵称。
+ * 新用户统一给默认昵称 + 默认头像，用户后续可在「我的」主动设置。
  */
 export async function login(dto: LoginDTO): Promise<LoginResult> {
   // 1. code 换 openid（dev 后门开启时跳过微信，返回 mock openid）
@@ -51,8 +97,8 @@ export async function login(dto: LoginDTO): Promise<LoginResult> {
     user = await authRepository.create({
       openid: session.openid,
       unionid: session.unionid,
-      nickname: dto.nickname ?? null,
-      avatarUrl: dto.avatarUrl ?? null,
+      nickname: generateDefaultNickname(),
+      avatarUrl: defaultAvatarUrl(),
       lastLoginAt: new Date(),
     })
     isNewUser = true
@@ -62,11 +108,12 @@ export async function login(dto: LoginDTO): Promise<LoginResult> {
     authRepository.updateLastLogin(user.id).catch((e) =>
       logger.warn({ err: e }, '[auth] 更新 lastLoginAt 失败'),
     )
-    // 若前端带了新昵称/头像，顺便更新
-    if (dto.nickname || dto.avatarUrl) {
+    // 老用户兜底：历史数据可能 nickname/avatarUrl 是 getUserProfile 废弃后的匿名垃圾值
+    // （"微信用户" + thirdwx.qlogo.cn 默认灰头像），登录时补上默认值
+    if (isInvalidNickname(user.nickname) || isInvalidAvatarUrl(user.avatarUrl)) {
       user = await authRepository.updateProfile(user.id, {
-        nickname: dto.nickname,
-        avatarUrl: dto.avatarUrl,
+        nickname: isInvalidNickname(user.nickname) ? generateDefaultNickname() : user.nickname!,
+        avatarUrl: isInvalidAvatarUrl(user.avatarUrl) ? defaultAvatarUrl() : user.avatarUrl!,
       })
     }
   }

@@ -7,7 +7,7 @@
 import { useTokenStore } from '@/store/token'
 
 /** 白名单：无需登录即可访问的页面 */
-const WHITELIST = ['/pages/login/index']
+const WHITELIST = ['/pages/login/index', '/pages/agreement/privacy']
 
 export function setupRouteInterceptor() {
   const interceptors = ['navigateTo', 'redirectTo', 'reLaunch', 'switchTab']

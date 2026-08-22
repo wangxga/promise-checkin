@@ -35,12 +35,6 @@ export default {
     },
     usingComponents: true,
     lazyCodeLoading: 'requiredComponents',
-    // 发布设置
-    permission: {
-      'scope.userLocation': {
-        desc: '你的位置信息将用于打卡记录',
-      },
-    },
     // 最低基础库版本（canvas 2d 需要 2.9.0+）
     libVersion: '3.0.0',
   },
