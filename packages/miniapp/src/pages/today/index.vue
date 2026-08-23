@@ -219,6 +219,7 @@ function goMissed() {
   width: 100%;
   padding: 8rpx 0;
   background: #f5554a;
+  text-align: center;
 }
 .gc-month {
   font-size: 22rpx;
@@ -229,6 +230,7 @@ function goMissed() {
   flex: 1;
   display: flex;
   align-items: center;
+  justify-content: center;
   font-size: 64rpx;
   font-weight: 600;
   color: #1f1f1f;
