@@ -29,6 +29,11 @@ function goLogin() {
   uni.navigateTo({ url: '/pages/login/index' })
 }
 
+/** 游客面板日历卡片：显示当天日期（emoji 📅 在 Apple 设备上固定渲染为 7 月 17 日，改用真实日期） */
+const today = new Date()
+const todayMonth = today.getMonth() + 1
+const todayDay = today.getDate()
+
 /** 一键打卡（recordValue 计划先弹数值输入） */
 async function handleQuickDone(
   checkinId: number,
@@ -82,7 +87,12 @@ function goMissed() {
     <!-- 游客态：可浏览的产品介绍 + 用户主动选择的登录入口。
          审核要求：不得一进入就要求授权登录，登录须用户自行选择 -->
     <view v-else-if="isGuest" class="guest-panel">
-      <view class="guest-icon">📅</view>
+      <view class="guest-calendar">
+        <view class="gc-header">
+          <text class="gc-month">{{ todayMonth }}月</text>
+        </view>
+        <text class="gc-day">{{ todayDay }}</text>
+      </view>
       <text class="guest-title">如约打卡</text>
       <text class="guest-desc">课程、习惯，按计划自动排期</text>
       <text class="guest-desc">每日待办提醒 · 一键打卡 · 缺席追溯</text>
@@ -192,9 +202,37 @@ function goMissed() {
   align-items: center;
   padding: 180rpx 64rpx 0;
 }
-.guest-icon {
-  font-size: 96rpx;
+/* 日历卡片：红色月份头 + 当天日期（台历样式） */
+.guest-calendar {
+  width: 144rpx;
+  height: 144rpx;
+  border-radius: 20rpx;
+  background: #fff;
+  box-shadow: 0 8rpx 32rpx rgba(0, 0, 0, 0.08);
+  overflow: hidden;
   margin-bottom: 32rpx;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+.gc-header {
+  width: 100%;
+  padding: 8rpx 0;
+  background: #f5554a;
+}
+.gc-month {
+  font-size: 22rpx;
+  color: #fff;
+  line-height: 1.2;
+}
+.gc-day {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  font-size: 64rpx;
+  font-weight: 600;
+  color: #1f1f1f;
+  line-height: 1.4;
 }
 .guest-title {
   font-size: 44rpx;
